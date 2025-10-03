@@ -1,66 +1,103 @@
 .navbar_container {
-    width: 100%;
-    background-color: #1a1a1a;
-    padding: 10px 20px;
-  }
-  
-  .navbar_content {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: relative;
-  }
-  
-  .navbar_logo {
-    color: #fff;
-    font-size: 18px;
-    font-weight: bold;
-  }
-  
-  .navbar_greeting {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    color: #fff;
-    font-weight: 500;
-    font-size: 18px;
-  }
-  
-  .navbar_actions {
-    display: flex;
-    align-items: center;
-  }
-  
-  .logout-button {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background-color: #f9f9f9;
-    border: 1px solid #ccc;
-    cursor: pointer;
-    padding: 6px 12px;
-    font-size: 14px;
-    color: #333;
-    border-radius: 6px;
-    transition: background-color 0.2s, color 0.2s;
-  }
-  
-  .logout-button:hover {
-    background-color: #e0e0e0;
-  }
-  
-  .logout-icon {
-    width: 20px;
-    height: 20px;
-  }
-  
+  width: 100%;
+  background-color: #1a1a1a;
+  padding: 10px 20px;
+}
+
+.navbar_content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.navbar_logo {
+  color: #fff;
+  font-size: 18px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.logo-icon {
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
+  vertical-align: middle;
+  color: #fff;
+}
+
+
+.navbar_greeting {
+  flex: 1;
+  text-align: center;
+  color: #fff;
+  font-weight: 500;
+  font-size: 18px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 10px;
+}
+
+.navbar_actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.logout-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #f9f9f9;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  padding: 6px 12px;
+  font-size: 14px;
+  color: #333;
+  border-radius: 6px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.logout-button:hover {
+  background-color: #e0e0e0;
+}
+
+.logout-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.logout-text {
+  display: none;
+}
+
+@media (min-width: 640px) {
   .logout-text {
-    display: none;
+    display: inline;
   }
-  
-  @media (min-width: 640px) {
-    .logout-text {
-      display: inline;
-    }
+}
+
+@media (max-width: 1024px) {
+  .navbar_greeting {
+    font-size: 16px;
   }
-  
+  .navbar_logo {
+    font-size: 16px;
+  }
+  .logout-button {
+    font-size: 13px;
+    padding: 5px 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .navbar_greeting {
+    font-size: 14px;
+    padding: 0 5px;
+  }
+  .logout-button {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+}
