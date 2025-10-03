@@ -6,6 +6,7 @@ import { RegisterDto } from "./dto/register.dto";
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { TokenPayload } from "./interfaces/tokenPayload.interface";
+import { UserEntity } from "src/users/entities/user.entity";
 
 @Injectable()
 export class AuthenticationService {
@@ -63,6 +64,15 @@ export class AuthenticationService {
         }
       }
 
+      public async checkAuth(user: UserEntity) {
+        if (!user) {
+          throw new HttpException('Not authenticated', HttpStatus.UNAUTHORIZED);
+        }
+        
+        const { password, currentHashedRefreshToken, ...safeUser } = user;
+        return safeUser;
+      }
+
       public getCookieWithJwtAccessToken(userId: string) {
         const payload: TokenPayload = { userId };
         const token = this.jwtService.sign(payload, {
@@ -78,7 +88,7 @@ export class AuthenticationService {
           secret: this.configService.get('JWT_REFRESH_TOKEN_SECRET'),
           expiresIn: `${this.configService.get('JWT_REFRESH_TOKEN_EXPIRATION_TIME')}d`
         });
-        const cookie = `Refresh=${token}; HttpOnly; Path=/; Max-Age=${this.configService.get('JWT_REFRESH_TOKEN_EXPIRATION_TIME')}`;
+        const cookie = `Refresh=${token}; HttpOnly; Path=/; Max-Age=${this.configService.get('JWT_REFRESH_TOKEN_EXPIRATION_TIME')}d`;
         return {
           cookie,
           token

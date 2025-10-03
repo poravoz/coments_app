@@ -60,6 +60,12 @@ export class AuthenticationController {
     }
 
     @UseGuards(JwtRefreshGuard)
+    @Get('check-auth')
+    async checkAuth(@Req() request: RequestWithUser) {
+      return this.authenticationService.checkAuth(request.user);
+    }
+
+    @UseGuards(JwtRefreshGuard)
     @Get('refresh')
     refresh(@Req() request: RequestWithUser, @Res({ passthrough: true }) response: Response) {
       if (!request.user?.id) {

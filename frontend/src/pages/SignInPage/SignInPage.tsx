@@ -1,10 +1,27 @@
 import { useState } from "react";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import "./SignInPage.css";
+import { useAuthStore } from "../../store/useAuthStore";
 
 export const SignInPage = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const [formData, setFormData] = useState({
+      email: "",
+      password: "",
+  });
+  
+  const {signIn, isLogging } = useAuthStore();
+  
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const success = await signIn(formData);
+    if(success) {
+      navigate("/");
+    }
+  };
 
   return (
     <div className="signin-container">
@@ -14,7 +31,7 @@ export const SignInPage = () => {
           <p className="signin-subtitle">Sign in to your account</p>
         </div>
 
-        <form className="signin-form">
+        <form onSubmit={handleSubmit} className="signin-form">
           {/* Email */}
           <div className="form-group">
             <label className="form-label">Email</label>
@@ -24,6 +41,8 @@ export const SignInPage = () => {
                 type="email"
                 className="form-input"
                 placeholder="you@example.com"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
               />
             </div>
           </div>
@@ -37,6 +56,8 @@ export const SignInPage = () => {
                 type={showPassword ? "text" : "password"}
                 className="form-input"
                 placeholder="••••••••"
+                value={formData.password}
+                onChange={(e) => setFormData({...formData, password: e.target.value})}
               />
               <button
                 type="button"
@@ -48,8 +69,13 @@ export const SignInPage = () => {
             </div>
           </div>
 
-          <button type="submit" className="submit-button">
-              Sign In
+          <button type="submit" className="submit-button" disabled = {isLogging}>
+            {isLogging ? (
+            <>
+              <Loader2 className="loader2_sign_in" />
+              Loading...
+            </>
+            ) : ("Sign In")}
           </button>
         </form>
 

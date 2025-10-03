@@ -148,6 +148,17 @@
     text-decoration: underline;
   }
   
+  .loader2_sign_in {
+    width: 15px;
+    height: 15px;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
   /* Mobile */
   @media (max-width: 640px) {
     .signin-card {

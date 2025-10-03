@@ -144,6 +144,17 @@ html, body {
   .login-link:hover {
     text-decoration: underline;
   }
+
+  .loader2_sign_up {
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
   
   /* Mobile */
   @media (max-width: 640px) {
