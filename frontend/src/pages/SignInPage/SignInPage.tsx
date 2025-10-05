@@ -1,25 +1,38 @@
 import { useState } from "react";
 import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import "./SignInPage.css";
 import { useAuthStore } from "../../store/useAuthStore";
+import { Captcha } from "../../components/Captcha/captcha";
+import "./SignInPage.css";
 
 export const SignInPage = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
-      email: "",
-      password: "",
-  });
-  
-  const {signIn, isLogging } = useAuthStore();
-  
+  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [captchaValue, setCaptchaValue] = useState("");
+  const [captchaValid, setCaptchaValid] = useState<boolean | null>(null);
+
+  const { signIn, isLogging } = useAuthStore();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Если показана капча, проверяем её
+    if (failedAttempts >= 3 && !captchaValid) {
+      if (!captchaValue || !captchaValue.trim()) {
+        setCaptchaValid(false);
+        return;
+      }
+    }
+
     const success = await signIn(formData);
-    if(success) {
+    if (success) {
+      setFailedAttempts(0);
       navigate("/");
+    } else {
+      setFailedAttempts(prev => prev + 1);
+      if (failedAttempts + 1 >= 3) setCaptchaValid(false);
     }
   };
 
@@ -42,7 +55,9 @@ export const SignInPage = () => {
                 className="form-input"
                 placeholder="you@example.com"
                 value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
               />
             </div>
           </div>
@@ -57,7 +72,9 @@ export const SignInPage = () => {
                 className="form-input"
                 placeholder="••••••••"
                 value={formData.password}
-                onChange={(e) => setFormData({...formData, password: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
               />
               <button
                 type="button"
@@ -69,13 +86,23 @@ export const SignInPage = () => {
             </div>
           </div>
 
-          <button type="submit" className="submit-button" disabled = {isLogging}>
+          {/* CAPTCHA after 3 unsuccessful attempts */}
+          {failedAttempts >= 3 && (
+          <Captcha
+            value={captchaValue}
+            onChange={setCaptchaValue}
+            onValidate={setCaptchaValid}
+          />
+        )}
+
+          <button type="submit" className="submit-button" disabled={isLogging}>
             {isLogging ? (
-            <>
-              <Loader2 className="loader2_sign_in" />
-              Loading...
-            </>
-            ) : ("Sign In")}
+              <>
+                <Loader2 className="loader2_sign_in" /> Loading...
+              </>
+            ) : (
+              "Sign In"
+            )}
           </button>
         </form>
 
