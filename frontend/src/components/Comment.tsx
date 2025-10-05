@@ -6,7 +6,6 @@ import { CommentType } from "./Comments";
 interface CommentProps {
   comment: CommentType;
   replies: React.ReactNode[];
-  currentUserId: string;
   activeComment: ActiveComment | null;
   setActiveComment: React.Dispatch<React.SetStateAction<ActiveComment | null>>;
   deleteComment: () => void;
@@ -15,13 +14,30 @@ interface CommentProps {
   depth: number;
 }
 
-const LEFT_SHIFT = 32; // 2rem = 32px
-const MAX_INDENT_LEVEL = 2; // Limit to 3 levels, 4+ reverts to level 1
+const LEFT_SHIFT = 32; // 32px
+const MAX_INDENT_LEVEL = 2; // Limit to 3 levels, 4+ reverts to level 3
+
+const parseDate = (dateStr: string): Date => {
+  const trimmed = dateStr.trim();
+  if (trimmed.includes(',')) {
+    const [datePart, timePart] = trimmed.split(',');
+    const [day, month, year] = datePart.trim().split('.');
+    const [hour, minute, second] = timePart.trim().split(':');
+    return new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hour),
+      Number(minute),
+      Number(second)
+    );
+  }
+  return new Date(trimmed);
+};
 
 export const Comment: React.FC<CommentProps> = ({
   comment,
   replies,
-  currentUserId,
   activeComment,
   setActiveComment,
   deleteComment,
@@ -29,17 +45,18 @@ export const Comment: React.FC<CommentProps> = ({
   updateComment,
   depth,
 }) => {
+  const createdDate = parseDate(comment.createdAt);
   const fiveMinutes = 300000;
-  const timePassed = new Date().getTime() - new Date(comment.createdAt).getTime() > fiveMinutes;
-  const canReply = Boolean(currentUserId);
-  const canEdit = currentUserId === comment.userId && !timePassed;
-  const canDelete = currentUserId === comment.userId && !timePassed;
+  const timePassed = Date.now() - createdDate.getTime() > fiveMinutes;
+  const canReply = true;
+  const canEdit = true;
+  const canDelete = true;
   const isReplying = activeComment?.type === "replying" && activeComment.id === comment.id;
   const isEditing = activeComment?.type === "editing" && activeComment.id === comment.id;
 
-  const effectiveDepth = Math.min(depth, MAX_INDENT_LEVEL); // Cap depth at 3
+  const effectiveDepth = Math.min(depth, MAX_INDENT_LEVEL);
   const marginLeft = `${effectiveDepth * LEFT_SHIFT}px`;
-
+  
   return (
     <>
       <div className="comment-wrapper" style={{ marginLeft }}>
@@ -48,16 +65,16 @@ export const Comment: React.FC<CommentProps> = ({
             <img src="./user-icon.png" alt="User" />
           </div>
           <div className="comment-right-part">
-            <div className="comment-author">{comment.username}</div>
-            <div className="comment-date">{new Date(comment.createdAt).toLocaleDateString()}</div>
+            <div className="comment-author">{comment.name}</div>
+            <div className="comment-date">{createdDate.toLocaleDateString()}</div>
 
-            {!isEditing && <div className="comment-text">{comment.body}</div>}
+            {!isEditing && <div className="comment-text">{comment.comment}</div>}
 
             {isEditing && (
               <CommentForm
                 submitLabel="Update"
                 hasCancelButton
-                initialText={comment.body}
+                initialText={comment.comment}
                 handleSubmit={(text) => updateComment(text, comment.id)}
                 handleCancel={() => setActiveComment(null)}
               />
@@ -80,7 +97,15 @@ export const Comment: React.FC<CommentProps> = ({
                   Edit
                 </span>
               )}
-              {canDelete && <span className="comment-action" onClick={deleteComment}>Delete</span>}
+              {canDelete && (
+                <span 
+                  className="comment-action" 
+                  onClick={deleteComment}
+                  style={{ color: 'red' }} 
+                >
+                  Delete
+                </span>
+              )}
             </div>
 
             {isReplying && (

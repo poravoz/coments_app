@@ -1,5 +1,5 @@
 export interface Comment {
     id: string;
-    comment: string;
+    body: string;
     createdAt: Date;
 }

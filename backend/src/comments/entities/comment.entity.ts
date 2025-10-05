@@ -1,18 +1,24 @@
-import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, CreateDateColumn } from "typeorm";
-import { UserEntity } from "../../users/entities/user.entity";
+import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, OneToMany, JoinColumn, CreateDateColumn } from "typeorm";
+import { UserEntity } from "src/users/entities/user.entity";
 
-@Entity()
+@Entity() 
 export class CommentEntity {
     @PrimaryGeneratedColumn('uuid')
-    public id: string;
+    public id?: string;
 
     @Column()
     public comment: string;
 
-    @CreateDateColumn({ type: 'timestamp' })
-    public createdAt: Date;
-
-    @ManyToOne(() => UserEntity, user => user.comments, {onDelete: 'CASCADE'})
+    @ManyToOne(() => UserEntity, user => user.comments, { eager: true })
+    @JoinColumn({ name: 'userId' })
     public user: UserEntity;
-}
 
+    @Column({ type: 'uuid', nullable: true })
+    public parentId?: string | null;
+
+    @OneToMany(() => CommentEntity, comment => comment.parentId)
+    public children?: CommentEntity[];
+
+    @CreateDateColumn()
+    public createdAt: Date;
+}

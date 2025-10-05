@@ -1,5 +1,5 @@
 import {create} from "zustand";
-import { axiosInstanace } from "../lib/axios";
+import { axiosInstance } from "../lib/axios";
 import {AuthUser, SignInData, SignUpData} from "../types/auth";
 import toast from "react-hot-toast";
 
@@ -23,7 +23,7 @@ interface AuthState {
   
     checkAuth: async () => {
       try {
-        const res = await axiosInstanace.get<AuthUser>("/authentication/check-auth");
+        const res = await axiosInstance.get<AuthUser>("/authentication/check-auth");
         set({ authUser: res.data });
       } catch (error) {
         console.error("Error in checkAuth", error);
@@ -36,7 +36,7 @@ interface AuthState {
     signUp: async (data: SignUpData) => {
         set({ isSigningUp: true });
         try {
-          await axiosInstanace.post("/authentication/register", data, { withCredentials: true });
+          await axiosInstance.post("/authentication/register", data, { withCredentials: true });
           toast.success("Account created successfully");
         } catch (error) {
           toast.error((error as any)?.response?.data?.message);
@@ -48,7 +48,7 @@ interface AuthState {
       signIn: async (data: SignInData) => {
         set({ isLogging: true });
         try {
-          const res = await axiosInstanace.post<AuthUser>("/authentication/log-in", data, { withCredentials: true });
+          const res = await axiosInstance.post<AuthUser>("/authentication/log-in", data, { withCredentials: true });
           set({ authUser: res.data });
           toast.success("Logged in successfully");
           return true;
@@ -63,7 +63,7 @@ interface AuthState {
   
       logout: async () => {
         try {
-          await axiosInstanace.post("/authentication/log-out");
+          await axiosInstance.post("/authentication/log-out");
           set({ authUser: null });
           toast.success("Logged out successfully");
         } catch(error: any) {

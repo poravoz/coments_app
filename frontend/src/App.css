@@ -13,12 +13,14 @@ body {
   align-items: center;
   justify-content: center;
   height: 100vh;
+  background-color: #000; 
 }
 
 .loader {
   width: 40px;
   height: 40px;
   animation: spin 1s linear infinite;
+  color: white;
 }
 
 @keyframes spin {
@@ -261,6 +263,18 @@ body {
   color: #fefefe;
   font-size: 13px;
 }
+
+.comments-container-wrapper p {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 300;
+  color: #fff;
+  margin: 60px 0;
+  padding: 40px 30px;
+  border-radius: 16px;
+  position: relative;
+}
+
 
 @media (max-width: 600px) {
   .comments-page {

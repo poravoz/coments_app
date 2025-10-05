@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { CommentEntity } from './entities/comment.entity';
 import { CreateCommentDto } from './dto/createComment.dto';
 import { UpdateCommentDto } from './dto/updateComment.dto';
+import { CreateReplyDto } from './dto/createReplyCommentDto';
 import { UsersService } from 'src/users/users.service';
 
 @Injectable()
@@ -41,10 +42,26 @@ export default class CommentsService {
     const newComment = this.commentRepository.create({
       comment: commentDto.comment,
       user,
-      
+      parentId: commentDto.parentId || null,
     });
     await this.commentRepository.save(newComment);
-    return newComment;
+    return newComment; 
+  }
+
+  async createReply(parentId: string, replyDto: CreateReplyDto, userId: string) {
+    const parentComment = await this.commentRepository.findOne({ where: { id: parentId } });
+    if (!parentComment) {
+      throw new HttpException('Parent comment not found', HttpStatus.NOT_FOUND);
+    }
+
+    const user = await this.usersService.getUserById(userId);
+    const newReply = this.commentRepository.create({
+      comment: replyDto.comment,
+      user,
+      parentId: parentId,
+    });
+    await this.commentRepository.save(newReply);
+    return newReply;
   }
 
   async updateComment(id: string, commentDto: UpdateCommentDto) {

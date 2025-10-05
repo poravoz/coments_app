@@ -31,7 +31,7 @@ function App() {
       <NavBar />
 
       <Routes>
-        <Route path="/" element={authUser ? <Comments currentUserId = "1" /> : <Navigate to="/login" />} />
+        <Route path="/" element={authUser ? <Comments  /> : <Navigate to="/login" />} />
         <Route path="/register" element={!authUser ? <SignUpPage /> : <Navigate to="/" />} />
         <Route path="/login" element={!authUser ? <SignInPage /> : <Navigate to="/" />} />
         <Route path="*" element={<Navigate to={authUser ? "/" : "/login"} />} />

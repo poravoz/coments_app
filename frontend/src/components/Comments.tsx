@@ -1,52 +1,44 @@
 import React, { useEffect, useState } from "react";
 import { CommentForm } from "./CommentForm";
 import { ConfirmDialog } from "./ConfirmDialog/ConfirmDialog";
-import toast from "react-hot-toast";
 import { ActiveComment } from "../types/types";
-import {
-  getComments as getCommentsApi,
-  createComment as createCommentApi,
-  updateComment as updateCommentApi,
-  deleteComment as DeleteCommentApi,
-} from "../api";
 import { Comment } from "./Comment";
+import { useCommentsStore } from "../store/useCommentsStore";
 
 export interface CommentType {
   id: string;
-  body: string;
-  username: string;
+  comment: string;
+  name: string;
   userId: string;
   parentId: string | null;
   createdAt: string;
 }
 
-interface CommentsProps {
-  currentUserId: string;
-}
-
-export const Comments: React.FC<CommentsProps> = ({ currentUserId }) => {
-  const [comments, setComments] = useState<CommentType[]>([]);
+export const Comments = () =>  {
   const [activeComment, setActiveComment] = useState<ActiveComment | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const commentsPerPage = 25;
+  const { comments: storeComments, getComments, createComment, updateComment, deleteComment } = useCommentsStore();
 
   useEffect(() => {
-    getCommentsApi().then((data) => setComments(data));
+    getComments();
   }, []);
 
   const addComment = (text: string, parentId: string | null = null, callback?: () => void) => {
-    createCommentApi(text, parentId).then((comment) => {
-      setComments([comment, ...comments]);
+    createComment(text, parentId).then((newComment) => {
       if (callback) callback();
+    }).catch((error) => {
+      console.error("Add comment failed:", error);
     });
   };
 
-  const updateComment = (text: string, commentId: string) => {
-    updateCommentApi(text, commentId).then(() => {
-      setComments((prev) => prev.map((c) => (c.id === commentId ? { ...c, body: text } : c)));
+  const updateCommentHandler = (text: string, commentId: string) => {
+    updateComment(commentId, text).then(() => {
       setActiveComment(null);
+    }).catch((error) => {
+      console.error("Update comment failed:", error);
     });
   };
 
@@ -62,9 +54,7 @@ export const Comments: React.FC<CommentsProps> = ({ currentUserId }) => {
 
   const handleDelete = async () => {
     if (!commentToDelete) return;
-    await DeleteCommentApi(commentToDelete);
-    setComments((prev) => prev.filter((c) => c.id !== commentToDelete));
-    toast.success("Comment deleted");
+    await deleteComment(commentToDelete);
     closeDeleteDialog();
   };
 
@@ -89,7 +79,7 @@ export const Comments: React.FC<CommentsProps> = ({ currentUserId }) => {
     return size;
   };
 
-  const tree = buildTree(comments);
+  const tree = buildTree(storeComments);
   const rootComments = (tree.get("root") || []).sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   );
@@ -116,7 +106,7 @@ export const Comments: React.FC<CommentsProps> = ({ currentUserId }) => {
   const totalPages = pages.length;
   const currentRoots = pages[currentPage - 1] || [];
 
-  const renderComments = (parentId: string, depth: number): React.ReactNode[] => {
+  const renderComments = (parentId: string, depth: number) => {
     const children = (tree.get(parentId) || []).sort(
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
@@ -125,12 +115,11 @@ export const Comments: React.FC<CommentsProps> = ({ currentUserId }) => {
         key={comment.id}
         comment={comment}
         replies={renderComments(comment.id, depth + 1)}
-        currentUserId={currentUserId}
         activeComment={activeComment}
         setActiveComment={setActiveComment}
         deleteComment={() => openDeleteDialog(comment.id)}
         addComment={addComment}
-        updateComment={updateComment}
+        updateComment={updateCommentHandler}
         depth={depth}
       />
     ));
@@ -143,37 +132,42 @@ export const Comments: React.FC<CommentsProps> = ({ currentUserId }) => {
         <CommentForm submitLabel="Write" handleSubmit={addComment} />
       </div>
 
-      <div className="pagination">
-        <button
-          disabled={currentPage === 1}
-          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-        >
-          Previous
-        </button>
-        <span>Page {currentPage} of {totalPages}</span>
-        <button
-          disabled={currentPage === totalPages}
-          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-        >
-          Next
-        </button>
-      </div>
+      {totalPages > 0 && (
+        <div className="pagination">
+          <button
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+          >
+            Previous
+          </button>
+          <span>Page {currentPage} of {totalPages}</span>
+          <button
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+          >
+            Next
+          </button>
+        </div>
+      )}
 
       <div className="comments-container-wrapper">
-        {currentRoots.map((root) => (
-          <Comment
-            key={root.id}
-            comment={root}
-            replies={renderComments(root.id, 1)}
-            currentUserId={currentUserId}
-            activeComment={activeComment}
-            setActiveComment={setActiveComment}
-            deleteComment={() => openDeleteDialog(root.id)}
-            addComment={addComment}
-            updateComment={updateComment}
-            depth={0}
-          />
-        ))}
+        { currentRoots.length === 0 ? (
+          <p>No comments on this page...</p>
+        ) : (
+          currentRoots.map((root) => (
+            <Comment
+              key={root.id}
+              comment={root}
+              replies={renderComments(root.id, 1)}
+              activeComment={activeComment}
+              setActiveComment={setActiveComment}
+              deleteComment={() => openDeleteDialog(root.id)}
+              addComment={addComment}
+              updateComment={updateCommentHandler}
+              depth={0}
+            />
+          ))
+        )}
       </div>
 
       <ConfirmDialog open={dialogOpen} onClose={closeDeleteDialog} onConfirm={handleDelete} />
