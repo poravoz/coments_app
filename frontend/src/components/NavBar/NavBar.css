@@ -2,6 +2,7 @@
   width: 100%;
   background-color: #1a1a1a;
   padding: 10px 20px;
+  position: fixed;
 }
 
 .navbar_content {
