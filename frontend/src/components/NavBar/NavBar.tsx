@@ -1,5 +1,5 @@
 import { LogOut, MessageCircle } from "lucide-react";
-import { useAuthStore } from "../store/useAuthStore";
+import { useAuthStore } from "../../store/useAuthStore";
 import { useNavigate } from "react-router-dom";
 import "./NavBar.css";
 

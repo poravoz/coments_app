@@ -15,7 +15,11 @@ export default class CommentsService {
   ) {}
 
   async getAllComments() {
-    return await this.commentRepository.find({ relations: ['user'] });
+    const comments = await this.commentRepository.find({ relations: ['user'] });
+    return comments.map(comment => ({
+      ...comment,
+      createdAt: comment.createdAt.toLocaleString('uk-UA', { hour12: false }),
+    }));
   }
 
   async getCommentById(id: string) {
@@ -26,14 +30,18 @@ export default class CommentsService {
     if (!comment) {
       throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
     }
-    return comment;
+    return {
+      ...comment,
+      createdAt: comment.createdAt.toLocaleString('uk-UA', { hour12: false }),
+    };
   }
 
   async createComment(commentDto: CreateCommentDto) {
     const user = await this.usersService.getUserById(commentDto.userId);
     const newComment = this.commentRepository.create({
       comment: commentDto.comment,
-      user
+      user,
+      
     });
     await this.commentRepository.save(newComment);
     return newComment;
@@ -52,7 +60,10 @@ export default class CommentsService {
   }
 
   async deleteComment(id: string) {
-    const comment = await this.getCommentById(id);
+    const comment = await this.commentRepository.findOne({ where: { id }, relations: ['user'] });
+    if (!comment) {
+      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
+    }
     return await this.commentRepository.remove(comment);
   }
 }

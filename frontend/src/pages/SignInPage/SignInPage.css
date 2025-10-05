@@ -3,12 +3,10 @@
   }
   
   html, body, #root, .App {
-    height: 100vh;
-    margin: 0;
-    padding: 0;
-    background-color: #121212;
-    color: #fefefe;
-    overflow: hidden; 
+    min-height: 100vh;
+    height: auto;
+    overflow-x: hidden;
+    overflow: hidden;
   }
   
   /* Sign In Panel */
@@ -167,6 +165,12 @@
   
     .signin-title {
       font-size: 24px;
+    }
+  }
+
+  @media (max-height: 700px), (max-width: 1100px) {
+    html, body, #root, .App {
+      overflow-y: auto;
     }
   }
   

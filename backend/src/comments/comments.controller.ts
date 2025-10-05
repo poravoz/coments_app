@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Res, UseGuards 
 import CommentsService from './comments.service';
 import { CreateCommentDto } from './dto/createComment.dto';
 import { UpdateCommentDto } from './dto/updateComment.dto';
-import JwtAuthenticationGuard from '../authentication/jwt-strategy/jwt-authentication.guard';
+import JwtRefreshGuard from 'src/authentication/guards/jwt-refresh-guards';
 
 @Controller('comments')
 export default class CommentsController {
@@ -21,7 +21,7 @@ export default class CommentsController {
     }
     
     @Post()
-    @UseGuards(JwtAuthenticationGuard)
+    @UseGuards(JwtRefreshGuard)
     async createComment(@Body() comment: CreateCommentDto) {
         return this.commentsService.createComment(comment);
     }
