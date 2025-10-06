@@ -112,7 +112,7 @@ export class AuthenticationService {
 
       public async checkAuth(user: UserEntity) {
         if (!user) {
-          throw new HttpException('Not authenticated', HttpStatus.UNAUTHORIZED);
+          throw new HttpException('Something went wrong', HttpStatus.UNAUTHORIZED);
         }
         
         const { password, currentHashedRefreshToken, ...safeUser } = user;

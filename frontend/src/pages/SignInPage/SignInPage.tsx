@@ -23,7 +23,6 @@ export const SignInPage = () => {
       try {
         const required = await checkCaptchaRequirement(formData.email);
         setCaptchaRequired(required);
-        console.log("CAPTCHA required:", required);
       } catch (error) {
         console.error("Failed to check CAPTCHA requirement:", error);
       }

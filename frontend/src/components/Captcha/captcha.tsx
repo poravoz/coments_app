@@ -72,14 +72,11 @@ export const Captcha: React.FC<CaptchaProps> = ({
         try {
           const tokenValid = await checkToken(captchaToken);
           if (!tokenValid) {
-            console.log("CAPTCHA token expired, refreshing...");
             refreshCaptcha();
             return;
           }
 
-          console.log("Validating CAPTCHA:", { token: captchaToken, value: newValue });
           const valid = await validateCaptcha(captchaToken, newValue);
-          console.log("CAPTCHA validation result:", valid);
           
           setIsValid(valid);
           onValidate?.(valid);

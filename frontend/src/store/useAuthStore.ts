@@ -35,11 +35,9 @@ interface AuthState {
 
     checkCaptchaRequirement: async (email: string) => {
       try {
-        console.log("Checking CAPTCHA requirement for:", email);
         const res = await axiosInstance.post("/authentication/check-captcha-requirement", {
           email
         });
-        console.log("CAPTCHA requirement result:", res.data);
         return res.data.captchaRequired;
       } catch (error) {
         console.error("Failed to check CAPTCHA requirement:", error);
@@ -50,7 +48,6 @@ interface AuthState {
     signUp: async (data: SignUpData) => {
         set({ isSigningUp: true });
         try {
-          console.log("Sending registration data:", data);
           await axiosInstance.post("/authentication/register", data, { withCredentials: true });
           toast.success("Account created successfully");
         } catch (error: any) {
@@ -64,7 +61,6 @@ interface AuthState {
       signIn: async (data: SignInData) => {
         set({ isLogging: true });
         try {
-          console.log("Sending login data:", data);
           const res = await axiosInstance.post<AuthUser>("/authentication/log-in", data, { withCredentials: true });
           set({ authUser: res.data });
           toast.success("Logged in successfully");

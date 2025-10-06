@@ -45,12 +45,12 @@ export class AuthenticationController {
     
     if (captchaRequired) {
       if (!captchaToken || !captchaValue) {
-        throw new HttpException('CAPTCHA required after multiple failed attempts', HttpStatus.BAD_REQUEST);
+        throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
       }
 
       const valid = this.captchaService.validateCaptcha(captchaToken, captchaValue);
       if (!valid) {
-        throw new HttpException('Invalid CAPTCHA', HttpStatus.BAD_REQUEST);
+        throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
       }
     }
 

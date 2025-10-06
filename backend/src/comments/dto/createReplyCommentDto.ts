@@ -1,3 +1,7 @@
+import { IsString, IsOptional } from 'class-validator';
+
 export class CreateReplyDto {
-    comment: string;
+  @IsString()
+  @IsOptional()
+  comment?: string;
 }
