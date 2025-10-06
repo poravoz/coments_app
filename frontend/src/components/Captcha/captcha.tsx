@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { RefreshCcw } from "lucide-react";
 import "./Captcha.css";
 
@@ -7,6 +7,7 @@ export type CaptchaChar = {
   rotate: number;
   translateY: number;
   skewX: number;
+  color: string;
 };
 
 interface CaptchaProps {
@@ -15,12 +16,17 @@ interface CaptchaProps {
   onValidate?: (valid: boolean) => void;
 }
 
-function generateCaptchaStr() {
+function generateCaptchaStr(): string {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-function rand(min: number, max: number) {
+function rand(min: number, max: number): number {
   return Math.random() * (max - min) + min;
+}
+
+function randomColor(): string {
+  const colors = ["#fff", "#f2f2f2", "#dcdcdc", "#e6e6e6"];
+  return colors[Math.floor(Math.random() * colors.length)];
 }
 
 function createCaptchaChars(s: string): CaptchaChar[] {
@@ -29,18 +35,19 @@ function createCaptchaChars(s: string): CaptchaChar[] {
     rotate: Math.round(rand(-25, 25)),
     translateY: Math.round(rand(-6, 6)),
     skewX: Math.round(rand(-8, 8)),
+    color: randomColor(),
   }));
 }
 
 export const Captcha: React.FC<CaptchaProps> = ({ value, onChange, onValidate }) => {
-  const initialCaptcha = generateCaptchaStr();
-  const [captchaStr, setCaptchaStr] = useState(initialCaptcha);
+  const initial = useMemo(() => generateCaptchaStr(), []);
+  const [captchaStr, setCaptchaStr] = useState(initial);
   const [captchaChars, setCaptchaChars] = useState<CaptchaChar[]>(() =>
-    createCaptchaChars(initialCaptcha)
+    createCaptchaChars(initial)
   );
   const [isValid, setIsValid] = useState<boolean | null>(null);
 
-  const refreshCaptcha = () => {
+  const refreshCaptcha = (): void => {
     const s = generateCaptchaStr();
     setCaptchaStr(s);
     setCaptchaChars(createCaptchaChars(s));
@@ -61,14 +68,16 @@ export const Captcha: React.FC<CaptchaProps> = ({ value, onChange, onValidate })
 
   return (
     <div className="captcha-container">
-      <div className="captcha-box" aria-hidden>
-        <div className="captcha-text" aria-hidden>
+      <div className="captcha-box">
+        <canvas className="captcha-bg" width="180" height="50" />
+        <div className="captcha-text">
           {captchaChars.map((c, i) => (
             <span
               key={i}
               className="captcha-char"
               style={{
                 transform: `rotate(${c.rotate}deg) translateY(${c.translateY}px) skewX(${c.skewX}deg)`,
+                color: c.color,
               }}
             >
               {c.char}
@@ -91,7 +100,6 @@ export const Captcha: React.FC<CaptchaProps> = ({ value, onChange, onValidate })
         placeholder="Enter the text above"
         value={value}
         onChange={(e) => onChange(e.target.value.toUpperCase())}
-        aria-label="Captcha input"
       />
       {isValid === false && (
         <p className="captcha-error">Invalid CAPTCHA. Please try again.</p>

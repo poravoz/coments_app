@@ -14,7 +14,34 @@
     border-radius: 6px;
     padding: 8px 10px;
     margin-bottom: 10px;
-    overflow: visible;
+    overflow: hidden;
+  }
+  
+  .captcha-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.03) 0,
+      rgba(255, 255, 255, 0.03) 2px,
+      transparent 2px,
+      transparent 4px
+    );
+  }
+  
+  /* Добавляем шум через JS */
+  .captcha-box::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    background-size: 4px 4px;
+    z-index: 1;
   }
   
   .captcha-text {
@@ -24,18 +51,17 @@
     font-size: 1.4rem;
     font-weight: bold;
     letter-spacing: 3px;
-    color: #fefefe;
     user-select: none;
     padding: 6px 8px;
-    z-index: 1;
+    z-index: 2;
   }
   
   .captcha-char {
     display: inline-block;
     margin: 0 2px;
     transform-origin: center;
-    z-index: 3;
-    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+    filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.4));
   }
   
   .captcha-refresh {
@@ -44,7 +70,7 @@
     color: #ccc;
     cursor: pointer;
     transition: color 0.15s;
-    z-index: 4;
+    z-index: 3;
   }
   .captcha-refresh:hover {
     color: #fefefe;
