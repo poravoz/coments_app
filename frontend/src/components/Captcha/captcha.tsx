@@ -1,109 +1,165 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { RefreshCcw } from "lucide-react";
 import "./Captcha.css";
-
-export type CaptchaChar = {
-  char: string;
-  rotate: number;
-  translateY: number;
-  skewX: number;
-  color: string;
-};
+import { useCaptchaStore } from "../../store/useCaptchaStore";
 
 interface CaptchaProps {
   value: string;
   onChange: (val: string) => void;
-  onValidate?: (valid: boolean) => void;
+  onValidate?: (valid: boolean | null) => void;
+  onTokenChange?: (token: string) => void;
 }
 
-function generateCaptchaStr(): string {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
-}
-
-function rand(min: number, max: number): number {
-  return Math.random() * (max - min) + min;
-}
-
-function randomColor(): string {
-  const colors = ["#fff", "#f2f2f2", "#dcdcdc", "#e6e6e6"];
-  return colors[Math.floor(Math.random() * colors.length)];
-}
-
-function createCaptchaChars(s: string): CaptchaChar[] {
-  return s.split("").map((ch) => ({
-    char: ch,
-    rotate: Math.round(rand(-25, 25)),
-    translateY: Math.round(rand(-6, 6)),
-    skewX: Math.round(rand(-8, 8)),
-    color: randomColor(),
-  }));
-}
-
-export const Captcha: React.FC<CaptchaProps> = ({ value, onChange, onValidate }) => {
-  const initial = useMemo(() => generateCaptchaStr(), []);
-  const [captchaStr, setCaptchaStr] = useState(initial);
-  const [captchaChars, setCaptchaChars] = useState<CaptchaChar[]>(() =>
-    createCaptchaChars(initial)
-  );
+export const Captcha: React.FC<CaptchaProps> = ({ 
+  value, 
+  onChange, 
+  onValidate, 
+  onTokenChange 
+}) => {
+  const [captchaStr, setCaptchaStr] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
   const [isValid, setIsValid] = useState<boolean | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSuccessfulValueRef = useRef<string>("");
 
-  const refreshCaptcha = (): void => {
-    const s = generateCaptchaStr();
-    setCaptchaStr(s);
-    setCaptchaChars(createCaptchaChars(s));
-    onChange("");
-    setIsValid(null);
-    onValidate?.(false);
+  const { generateCaptcha, validateCaptcha, checkToken } = useCaptchaStore();
+
+  const fetchCaptcha = async () => {
+    setIsLoading(true);
+    try {
+      const { text, token } = await generateCaptcha();
+      setCaptchaStr(text);
+      setCaptchaToken(token);
+      onTokenChange?.(token);
+      setIsValid(null);
+      onChange("");
+      lastSuccessfulValueRef.current = "";
+      onValidate?.(null);
+    } catch (err) {
+      console.error("Failed to fetch captcha:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
-    if (value === "") {
-      setIsValid(null);
-    } else {
-      const valid = value.toUpperCase() === captchaStr;
-      setIsValid(valid);
-      onValidate?.(valid);
+    fetchCaptcha();
+  }, []);
+
+  const refreshCaptcha = () => {
+    if (validationTimeoutRef.current) {
+      clearTimeout(validationTimeoutRef.current);
     }
-  }, [value, captchaStr, onValidate]);
+    fetchCaptcha();
+  };
+
+  const handleInputChange = async (newValue: string) => {
+    onChange(newValue);
+    
+    if (isValid !== null) {
+      setIsValid(null);
+      onValidate?.(null);
+    }
+
+    if (validationTimeoutRef.current) {
+      clearTimeout(validationTimeoutRef.current);
+    }
+
+    if (newValue.length === captchaStr.length && newValue.length > 0) {
+      validationTimeoutRef.current = setTimeout(async () => {
+        try {
+          const tokenValid = await checkToken(captchaToken);
+          if (!tokenValid) {
+            console.log("CAPTCHA token expired, refreshing...");
+            refreshCaptcha();
+            return;
+          }
+
+          console.log("Validating CAPTCHA:", { token: captchaToken, value: newValue });
+          const valid = await validateCaptcha(captchaToken, newValue);
+          console.log("CAPTCHA validation result:", valid);
+          
+          setIsValid(valid);
+          onValidate?.(valid);
+          
+          if (valid) {
+            lastSuccessfulValueRef.current = newValue;
+          }
+        } catch (error) {
+          console.error("CAPTCHA validation error:", error);
+          setIsValid(false);
+          onValidate?.(false);
+        }
+      }, 500); 
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (validationTimeoutRef.current) {
+        clearTimeout(validationTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const getCharTransform = (index: number) => {
+    const rotations = [-12, 8, -15, 10, -8, 12, -10, 6];
+    const scales = [1.15, 0.85, 1.2, 0.9, 1.1, 0.95, 1.25, 0.8];
+    const opacities = [0.7, 0.85, 0.6, 0.9, 0.75, 0.8, 0.65, 0.95];
+    const blurs = [0.4, 0.15, 0.5, 0.1, 0.35, 0.2, 0.45, 0.05];
+    const xTranslate = [-1, 2, -3, 1, -2, 3, -1, 2];
+    const yTranslate = [1, -2, 3, -1, 2, -3, 1, -2];
+    
+    const i = index % 8;
+    
+    return {
+      transform: `rotate(${rotations[i]}deg) scale(${scales[i]}) translate(${xTranslate[i]}px, ${yTranslate[i]}px)`,
+      opacity: opacities[i],
+      filter: `blur(${blurs[i]}px) contrast(1.2) brightness(${0.9 + Math.random() * 0.2})`
+    };
+  };
 
   return (
     <div className="captcha-container">
-      <div className="captcha-box">
-        <canvas className="captcha-bg" width="180" height="50" />
-        <div className="captcha-text">
-          {captchaChars.map((c, i) => (
-            <span
-              key={i}
-              className="captcha-char"
-              style={{
-                transform: `rotate(${c.rotate}deg) translateY(${c.translateY}px) skewX(${c.skewX}deg)`,
-                color: c.color,
-              }}
-            >
-              {c.char}
-            </span>
-          ))}
-        </div>
+      <div className="captcha-header">
+        <p className="captcha-label">Enter the CAPTCHA</p>
         <button
           type="button"
           className="captcha-refresh"
           onClick={refreshCaptcha}
+          disabled={isLoading}
           aria-label="Refresh captcha"
         >
-          <RefreshCcw size={18} />
+          <RefreshCcw size={16} />
         </button>
+      </div>
+      
+      <div className="captcha-box">
+        <div className="captcha-text">
+          {captchaStr.split("").map((char, i) => (
+            <span
+              key={i}
+              className="captcha-char"
+              style={getCharTransform(i)}
+            >
+              {char}
+            </span>
+          ))}
+        </div>
+        <div className="noise-overlay"></div>
       </div>
 
       <input
         type="text"
-        className={`captcha-input ${isValid === false ? "error" : ""}`}
-        placeholder="Enter the text above"
+        className={`captcha-input ${isValid === false ? "error" : ""} ${isValid === true ? "success" : ""}`}
+        placeholder="Type the characters above"
         value={value}
-        onChange={(e) => onChange(e.target.value.toUpperCase())}
+        onChange={(e) => handleInputChange(e.target.value.toUpperCase())}
+        disabled={isLoading}
+        maxLength={captchaStr.length}
       />
-      {isValid === false && (
-        <p className="captcha-error">Invalid CAPTCHA. Please try again.</p>
-      )}
     </div>
   );
 };

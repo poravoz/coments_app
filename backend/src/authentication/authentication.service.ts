@@ -10,12 +10,56 @@ import { UserEntity } from "src/users/entities/user.entity";
 
 @Injectable()
 export class AuthenticationService {
+    private failedLoginAttempts = new Map<string, { count: number; lastAttempt: Date }>();
+
+    public incrementFailedLogin(email: string) {
+      const now = new Date();
+      const existing = this.failedLoginAttempts.get(email);
+      
+      if (existing) {
+        const timeDiff = now.getTime() - existing.lastAttempt.getTime();
+        const thirtyMinutes = 30 * 60 * 1000;
+        
+        if (timeDiff > thirtyMinutes) {
+          this.failedLoginAttempts.set(email, { count: 1, lastAttempt: now });
+        } else {
+          this.failedLoginAttempts.set(email, { 
+            count: existing.count + 1, 
+            lastAttempt: now 
+          });
+        }
+      } else {
+        this.failedLoginAttempts.set(email, { count: 1, lastAttempt: now });
+      }
+    }
+  
+    public resetFailedLogin(email: string) {
+      this.failedLoginAttempts.delete(email);
+    }
+  
+    public isCaptchaRequired(email: string): boolean {
+      const attempts = this.failedLoginAttempts.get(email);
+      if (!attempts) return false;
+
+      const now = new Date();
+      const timeDiff = now.getTime() - attempts.lastAttempt.getTime();
+      const thirtyMinutes = 30 * 60 * 1000;
+      
+      if (timeDiff > thirtyMinutes) {
+        this.failedLoginAttempts.delete(email);
+        return false;
+      }
+
+      return attempts.count >= 3;
+    }
+    
     public getCookiesForLogOut() {
         return [
           'Authentication=; HttpOnly; Path=/; Max-Age=0',
           'Refresh=; HttpOnly; Path=/; Max-Age=0'
         ];
     }
+
     constructor(
         private readonly usersService: UsersService,
         private readonly jwtService: JwtService,
@@ -39,29 +83,31 @@ export class AuthenticationService {
         }
     }
 
-
-    public async getAuthenticatedUser(email: string, plainTextPassword: string) {
+    public async getAuthenticatedUser(email: string, plainTextPassword: string): Promise<UserEntity> {
         try {
           const user = await this.usersService.getUserByEmail(email);
           if (!user.password) {
             throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
           }
-          await this.verifyPassword(plainTextPassword, user.password);
+          
+          const isPasswordValid = await this.verifyPassword(plainTextPassword, user.password);
+          if (!isPasswordValid) {
+            throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
+          }
+
           user.password = undefined;
           return user;
         } catch (error) {
-          throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
+          throw error;
         }
       }
     
-    private async verifyPassword(plainTextPassword: string, hashedPassword: string) {
+    private async verifyPassword(plainTextPassword: string, hashedPassword: string): Promise<boolean> {
         const isPasswordMatching = await bcrypt.compare(
           plainTextPassword,
           hashedPassword
         );
-        if (!isPasswordMatching) {
-          throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
-        }
+        return isPasswordMatching;
       }
 
       public async checkAuth(user: UserEntity) {

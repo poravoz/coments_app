@@ -3,7 +3,6 @@ import { axiosInstance } from "../lib/axios";
 import {AuthUser, SignInData, SignUpData} from "../types/auth";
 import toast from "react-hot-toast";
 
-
 interface AuthState {
     authUser: AuthUser | null;
     isSigningUp: boolean;
@@ -13,6 +12,7 @@ interface AuthState {
     signUp: (data: SignUpData) => Promise<void>;
     signIn: (data: SignInData) => Promise<boolean>; 
     logout: () => Promise<void>;
+    checkCaptchaRequirement: (email: string) => Promise<boolean>;
   }
   
   export const useAuthStore = create<AuthState>((set) => ({
@@ -33,13 +33,29 @@ interface AuthState {
       }
     },
 
+    checkCaptchaRequirement: async (email: string) => {
+      try {
+        console.log("Checking CAPTCHA requirement for:", email);
+        const res = await axiosInstance.post("/authentication/check-captcha-requirement", {
+          email
+        });
+        console.log("CAPTCHA requirement result:", res.data);
+        return res.data.captchaRequired;
+      } catch (error) {
+        console.error("Failed to check CAPTCHA requirement:", error);
+        return false;
+      }
+    },
+
     signUp: async (data: SignUpData) => {
         set({ isSigningUp: true });
         try {
+          console.log("Sending registration data:", data);
           await axiosInstance.post("/authentication/register", data, { withCredentials: true });
           toast.success("Account created successfully");
-        } catch (error) {
-          toast.error((error as any)?.response?.data?.message);
+        } catch (error: any) {
+          console.error("Registration error:", error);
+          toast.error(error?.response?.data?.message || "Something went wrong");
         } finally {
           set({ isSigningUp: false });
         }
@@ -48,12 +64,14 @@ interface AuthState {
       signIn: async (data: SignInData) => {
         set({ isLogging: true });
         try {
+          console.log("Sending login data:", data);
           const res = await axiosInstance.post<AuthUser>("/authentication/log-in", data, { withCredentials: true });
           set({ authUser: res.data });
           toast.success("Logged in successfully");
           return true;
         } catch (error: any) {
-          toast.error(error?.response?.data?.message);
+          console.error("Login error:", error);
+          toast.error(error?.response?.data?.message || "Invalid credentials");
           return false;
         } finally {
           set({ isLogging: false });

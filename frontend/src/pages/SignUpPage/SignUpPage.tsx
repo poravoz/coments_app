@@ -16,11 +16,11 @@ export const SignUpPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [captchaInput, setCaptchaInput] = useState("");
   const [captchaValid, setCaptchaValid] = useState<boolean | null>(null);
-
+  const [captchaToken, setCaptchaToken] = useState("");
   const { signUp, isSigningUp } = useAuthStore();
   const navigate = useNavigate();
 
-  const validateForm = () => {
+  const validateForm = () => {    
     if (!formData.name.trim()) return toast.error("Full name is required");
     if (!formData.email.trim()) return toast.error("Email is required");
     if (!/\S+@\S+\.\S+/.test(formData.email))
@@ -30,15 +30,19 @@ export const SignUpPage: React.FC = () => {
       return toast.error("Password must be at least 6 characters");
     if (formData.password !== formData.repeatPassword)
       return toast.error("Passwords do not match");
-    if (!captchaValid) return toast.error("Invalid CAPTCHA");
+    if (captchaValid !== true) return toast.error("Please complete the CAPTCHA correctly");
     return true;
-  };
+  };  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm() === true) {
       try {
-        await signUp(formData);
+        await signUp({
+          ...formData,
+          captchaToken,
+          captchaValue: captchaInput
+        });
         navigate("/login");
       } catch {
         toast.error("Something went wrong");
@@ -60,7 +64,7 @@ export const SignUpPage: React.FC = () => {
           <div className="form-group">
             <label className="form-label">Full Name</label>
             <div className="input-wrapper">
-              <User className="input-icon" size={20} />
+              <User className="input-icon" size={18} />
               <input
                 type="text"
                 className="form-input"
@@ -76,7 +80,7 @@ export const SignUpPage: React.FC = () => {
           <div className="form-group">
             <label className="form-label">Email</label>
             <div className="input-wrapper">
-              <Mail className="input-icon" size={20} />
+              <Mail className="input-icon" size={18} />
               <input
                 type="email"
                 className="form-input"
@@ -92,7 +96,7 @@ export const SignUpPage: React.FC = () => {
           <div className="form-group">
             <label className="form-label">Password</label>
             <div className="input-wrapper">
-              <Lock className="input-icon" size={20} />
+              <Lock className="input-icon" size={18} />
               <input
                 type={showPassword ? "text" : "password"}
                 className="form-input"
@@ -107,7 +111,7 @@ export const SignUpPage: React.FC = () => {
                 className="toggle-password"
                 onClick={() => setShowPassword(!showPassword)}
               >
-                {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
               </button>
             </div>
           </div>
@@ -115,7 +119,7 @@ export const SignUpPage: React.FC = () => {
           <div className="form-group">
             <label className="form-label">Repeat Password</label>
             <div className="input-wrapper">
-              <Lock className="input-icon" size={20} />
+              <Lock className="input-icon" size={18} />
               <input
                 type={showPassword ? "text" : "password"}
                 className="form-input"
@@ -127,11 +131,12 @@ export const SignUpPage: React.FC = () => {
               />
             </div>
           </div>
-
+            
           <Captcha
             value={captchaInput}
             onChange={setCaptchaInput}
             onValidate={setCaptchaValid}
+            onTokenChange={setCaptchaToken}
           />
 
           <button type="submit" className="submit-button" disabled={isSigningUp}>

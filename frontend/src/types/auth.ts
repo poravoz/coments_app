@@ -1,16 +1,21 @@
-export interface AuthUser {
-    id: string;
-    email: string;
-    name: string;
-  }
-
 export interface SignUpData {
-    name: string;
-    email: string;
-    password: string;
-  }
+  name: string;
+  email: string;
+  password: string;
+  repeatPassword: string;
+  captchaToken?: string;
+  captchaValue?: string;
+}
 
-  export interface SignInData {
-    email: string;
-    password: string;
-  }
+export interface SignInData {
+  email: string;
+  password: string;
+  captchaToken?: string;
+  captchaValue?: string;
+}
+
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+}

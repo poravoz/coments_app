@@ -1,38 +1,61 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/useAuthStore";
 import { Captcha } from "../../components/Captcha/captcha";
 import "./SignInPage.css";
+import toast from "react-hot-toast";
 
 export const SignInPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ email: "", password: "" });
-  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [captchaRequired, setCaptchaRequired] = useState(false);
   const [captchaValue, setCaptchaValue] = useState("");
   const [captchaValid, setCaptchaValid] = useState<boolean | null>(null);
-
-  const { signIn, isLogging } = useAuthStore();
+  const [captchaToken, setCaptchaToken] = useState("");
+  const { signIn, isLogging, checkCaptchaRequirement } = useAuthStore();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkRequirement = async () => {
+      if (!formData.email.trim()) return;
+      
+      try {
+        const required = await checkCaptchaRequirement(formData.email);
+        setCaptchaRequired(required);
+        console.log("CAPTCHA required:", required);
+      } catch (error) {
+        console.error("Failed to check CAPTCHA requirement:", error);
+      }
+    };
+
+    const timeout = setTimeout(checkRequirement, 300);
+    return () => clearTimeout(timeout);
+  }, [formData.email, checkCaptchaRequirement]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Если показана капча, проверяем её
-    if (failedAttempts >= 3 && !captchaValid) {
-      if (!captchaValue || !captchaValue.trim()) {
+  
+    if (captchaRequired) {
+      if (!captchaValue || !captchaValue.trim() || captchaValid !== true) {
         setCaptchaValid(false);
+        toast.error("Please complete the CAPTCHA correctly");
         return;
       }
     }
-
-    const success = await signIn(formData);
+  
+    const loginData = {
+      ...formData,
+      ...(captchaRequired && { captchaToken, captchaValue })
+    };
+  
+    const success = await signIn(loginData);
+  
     if (success) {
-      setFailedAttempts(0);
       navigate("/");
     } else {
-      setFailedAttempts(prev => prev + 1);
-      if (failedAttempts + 1 >= 3) setCaptchaValid(false);
+      const required = await checkCaptchaRequirement(formData.email);
+      setCaptchaRequired(required);
     }
   };
 
@@ -45,7 +68,6 @@ export const SignInPage = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="signin-form">
-          {/* Email */}
           <div className="form-group">
             <label className="form-label">Email</label>
             <div className="input-wrapper">
@@ -62,7 +84,6 @@ export const SignInPage = () => {
             </div>
           </div>
 
-          {/* Password */}
           <div className="form-group">
             <label className="form-label">Password</label>
             <div className="input-wrapper">
@@ -86,14 +107,14 @@ export const SignInPage = () => {
             </div>
           </div>
 
-          {/* CAPTCHA after 3 unsuccessful attempts */}
-          {failedAttempts >= 3 && (
-          <Captcha
-            value={captchaValue}
-            onChange={setCaptchaValue}
-            onValidate={setCaptchaValid}
-          />
-        )}
+          {captchaRequired && (
+            <Captcha
+              value={captchaValue}
+              onChange={setCaptchaValue}
+              onValidate={setCaptchaValid}
+              onTokenChange={setCaptchaToken}
+            />
+          )}
 
           <button type="submit" className="submit-button" disabled={isLogging}>
             {isLogging ? (

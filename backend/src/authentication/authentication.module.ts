@@ -8,12 +8,14 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './jwt-strategy/jwt.strategy';
 import { JwtRefreshTokenStrategy } from './jwt-strategy/jwt-refresh-token-strategy';
+import { CaptchaModule } from './captcha/captcha.module';
 
 @Module({
     imports: [
         UsersModule, 
         PassportModule,
         ConfigModule,
+        CaptchaModule,
         JwtModule.registerAsync({
             imports: [ConfigModule],
             inject: [ConfigService],

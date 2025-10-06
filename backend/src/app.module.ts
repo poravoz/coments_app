@@ -5,6 +5,7 @@ import * as Joi from '@hapi/joi';
 import { DatabaseModule } from './database/database.module';
 import { AuthenticationModule } from './authentication/authentication.module';
 import { UsersModule } from './users/users.module';
+import { CaptchaModule } from './authentication/captcha/captcha.module';
 
 @Module({
   imports: [CommentsModule, ConfigModule.forRoot({
@@ -25,6 +26,7 @@ import { UsersModule } from './users/users.module';
     DatabaseModule,
     AuthenticationModule,
     UsersModule,
+    CaptchaModule,
   ],
   controllers: [],
   providers: [],
