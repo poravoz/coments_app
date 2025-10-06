@@ -9,14 +9,25 @@ export class CommentEntity {
     @Column()
     public comment: string;
 
-    @ManyToOne(() => UserEntity, user => user.comments, { eager: true })
+    @ManyToOne(() => UserEntity, user => user.comments, { 
+        eager: true,
+        onDelete: 'CASCADE' 
+    })
     @JoinColumn({ name: 'userId' })
     public user: UserEntity;
 
     @Column({ type: 'uuid', nullable: true })
     public parentId?: string | null;
 
-    @OneToMany(() => CommentEntity, comment => comment.parentId)
+    @ManyToOne(() => CommentEntity, comment => comment.children, { 
+        onDelete: 'CASCADE' 
+    })
+    @JoinColumn({ name: 'parentId' })
+    public parent?: CommentEntity;
+
+    @OneToMany(() => CommentEntity, comment => comment.parent, { 
+        cascade: true 
+    })
     public children?: CommentEntity[];
 
     @CreateDateColumn()

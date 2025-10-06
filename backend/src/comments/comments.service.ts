@@ -16,7 +16,9 @@ export default class CommentsService {
   ) {}
 
   async getAllComments() {
-    const comments = await this.commentRepository.find({ relations: ['user'] });
+    const comments = await this.commentRepository.find({ 
+      relations: ['user', 'children'] 
+    });
     return comments.map(comment => ({
       ...comment,
       createdAt: comment.createdAt.toLocaleString('uk-UA', { hour12: false }),
@@ -26,7 +28,7 @@ export default class CommentsService {
   async getCommentById(id: string) {
     const comment = await this.commentRepository.findOne({ 
       where: { id },
-      relations: ['user']
+      relations: ['user', 'children']
     });
     if (!comment) {
       throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
@@ -49,7 +51,10 @@ export default class CommentsService {
   }
 
   async createReply(parentId: string, replyDto: CreateReplyDto, userId: string) {
-    const parentComment = await this.commentRepository.findOne({ where: { id: parentId } });
+    const parentComment = await this.commentRepository.findOne({ 
+      where: { id: parentId },
+      relations: ['children']
+    });
     if (!parentComment) {
       throw new HttpException('Parent comment not found', HttpStatus.NOT_FOUND);
     }
@@ -77,10 +82,29 @@ export default class CommentsService {
   }
 
   async deleteComment(id: string) {
-    const comment = await this.commentRepository.findOne({ where: { id }, relations: ['user'] });
+    const comment = await this.commentRepository.findOne({ 
+      where: { id }, 
+      relations: ['user', 'children'] 
+    });
     if (!comment) {
       throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
     }
+  
+    if (comment.children && comment.children.length > 0) {
+      for (const child of comment.children) {
+        if (child && child.id) {
+          await this.deleteComment(child.id);
+        }
+      }
+    }
+  
     return await this.commentRepository.remove(comment);
+  }
+
+  async getCommentsByUserId(userId: string): Promise<CommentEntity[]> {
+    return await this.commentRepository.find({
+      where: { user: { id: userId } },
+      relations: ['user']
+    });
   }
 }

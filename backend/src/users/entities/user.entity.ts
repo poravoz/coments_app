@@ -16,7 +16,10 @@ export class UserEntity {
     @Column()
     public password?: string;
 
-    @OneToMany(() => CommentEntity, comment => comment.user, { cascade: true })
+    @OneToMany(() => CommentEntity, comment => comment.user, { 
+        cascade: true,
+        onDelete: 'CASCADE'
+    })
     @Exclude() 
     public comments?: CommentEntity[];
 

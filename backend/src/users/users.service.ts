@@ -49,6 +49,9 @@ export class UsersService {
 
   async removeUser(id: string) {
     const user = await this.getUserById(id);
+    
+    // Каскадное удаление комментариев происходит автоматически
+    // благодаря onDelete: 'CASCADE' в сущности UserEntity
     return await this.usersRepository.remove(user); 
   }
 
