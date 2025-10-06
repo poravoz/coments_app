@@ -1,4 +1,5 @@
 import React, { useState } from "react"
+import "./CommentForm.css";
 
 interface CommentsFormProps {
     handleSubmit: (text: string) => void;

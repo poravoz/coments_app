@@ -26,8 +26,6 @@ html, body {
   padding: 32px;
   border-radius: 12px;
   box-shadow: 0 6px 20px rgba(0,0,0,0.5);
-  max-height: calc(100vh - 40px); 
-  overflow-y: auto; 
 }
 
 .register-header { text-align: center; margin-bottom: 24px; }
@@ -177,4 +175,10 @@ html, body {
 @media (max-width: 640px) {
   .register-card { padding: 24px; }
   .register-title { font-size: 24px; }
+}
+
+@media (max-height: 700px), (max-width: 1100px) {
+  html, body, #root, .App {
+    overflow-y: auto;
+  }
 }

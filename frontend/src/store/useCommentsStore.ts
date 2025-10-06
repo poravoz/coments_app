@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import toast from "react-hot-toast";
 import { axiosInstance } from "../lib/axios";
-import { CommentType } from "../components/Comments";
+import { CommentType } from "../components/Comments/Comments";
 
 interface RawComment {
   id: string;

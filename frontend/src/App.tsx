@@ -7,7 +7,7 @@ import { Loader } from "lucide-react";
 import {Toaster} from "react-hot-toast"
 import "./App.css";
 import { NavBar } from "./components/NavBar/NavBar";
-import { Comments } from "./components/Comments";
+import { Comments } from "./components/Comments/Comments";
 
 function App() {
   const { authUser, checkAuth, isCheckingAuth } = useAuthStore();

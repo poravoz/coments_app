@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { CommentForm } from "./CommentForm";
-import { ConfirmDialog } from "./ConfirmDialog/ConfirmDialog";
-import { ActiveComment } from "../types/types";
-import { Comment } from "./Comment";
-import { useCommentsStore } from "../store/useCommentsStore";
+import { CommentForm } from "../CommentForm/CommentForm";
+import { ConfirmDialog } from "../ConfirmDialog/ConfirmDialog";
+import { ActiveComment } from "../../types/types";
+import { Comment } from "../Comment/Comment";
+import { useCommentsStore } from "../../store/useCommentsStore";
+import "./Comments.css";
 
 export interface CommentType {
   id: string;

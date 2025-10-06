@@ -1,7 +1,8 @@
 import React from "react";
-import { CommentForm } from "./CommentForm";
-import { ActiveComment } from "../types/types";
-import { CommentType } from "./Comments";
+import { CommentForm } from "../CommentForm/CommentForm";
+import { ActiveComment } from "../../types/types";
+import { CommentType } from "../Comments/Comments";
+import "./Comment.css";
 
 interface CommentProps {
   comment: CommentType;
