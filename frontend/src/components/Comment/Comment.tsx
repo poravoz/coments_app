@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { CommentForm } from "../CommentForm/CommentForm";
 import { ActiveComment } from "../../types/types";
-import { CommentType } from "../Comments/Comments";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import "./Comment.css";
+import { CommentType } from "../../types/commentType";
 
 interface CommentProps {
   comment: CommentType;
