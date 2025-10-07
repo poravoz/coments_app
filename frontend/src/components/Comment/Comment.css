@@ -11,6 +11,14 @@
     position: relative;
     transition: background 0.3s;
   }
+
+  .comment-avatar {
+    width: 40px;       
+    height: 40px;     
+    border-radius: 50%; 
+    object-fit: cover; 
+    cursor: pointer;    
+  }
   
   .comment.depth-0 { border-left: 3px solid #3b82f6; }
   .comment.depth-1 { border-left: 3px solid #10b981; background: #1a1a1a; }

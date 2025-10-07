@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { CommentForm } from "../CommentForm/CommentForm";
 import { ActiveComment } from "../../types/types";
 import { CommentType } from "../Comments/Comments";
+import Lightbox from "yet-another-react-lightbox";
+import "yet-another-react-lightbox/styles.css";
 import "./Comment.css";
 
 interface CommentProps {
@@ -24,14 +26,7 @@ const parseDate = (dateStr: string): Date => {
     const [datePart, timePart] = trimmed.split(',');
     const [day, month, year] = datePart.trim().split('.');
     const [hour, minute, second] = timePart.trim().split(':');
-    return new Date(
-      Number(year),
-      Number(month) - 1,
-      Number(day),
-      Number(hour),
-      Number(minute),
-      Number(second)
-    );
+    return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second));
   }
   return new Date(trimmed);
 };
@@ -46,24 +41,26 @@ export const Comment: React.FC<CommentProps> = ({
   updateComment,
   depth,
 }) => {
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+
   const createdDate = parseDate(comment.createdAt);
-  const fiveMinutes = 300000;
-  const timePassed = Date.now() - createdDate.getTime() > fiveMinutes;
-  const canReply = true;
-  const canEdit = true;
-  const canDelete = true;
+  const effectiveDepth = Math.min(depth, MAX_INDENT_LEVEL);
+  const marginLeft = `${effectiveDepth * LEFT_SHIFT}px`;
+
   const isReplying = activeComment?.type === "replying" && activeComment.id === comment.id;
   const isEditing = activeComment?.type === "editing" && activeComment.id === comment.id;
 
-  const effectiveDepth = Math.min(depth, MAX_INDENT_LEVEL);
-  const marginLeft = `${effectiveDepth * LEFT_SHIFT}px`;
-  
   return (
     <>
       <div className="comment-wrapper" style={{ marginLeft }}>
         <div className={`comment depth-${effectiveDepth}`}>
           <div className="comment-image-container">
-            <img src="./user-icon.png" alt="User" />
+            <img
+              src={comment.avatarUrl || "./user-icon.png"}
+              alt={comment.name}
+              className="comment-avatar"
+              onClick={() => comment.avatarUrl && setIsLightboxOpen(true)}
+            />
           </div>
           <div className="comment-right-part">
             <div className="comment-author">{comment.name}</div>
@@ -82,31 +79,25 @@ export const Comment: React.FC<CommentProps> = ({
             )}
 
             <div className="comment-actions">
-              {canReply && (
-                <span
-                  className="comment-action"
-                  onClick={() => setActiveComment({ id: comment.id, type: "replying" })}
-                >
-                  Reply
-                </span>
-              )}
-              {canEdit && (
-                <span
-                  className="comment-action"
-                  onClick={() => setActiveComment({ id: comment.id, type: "editing" })}
-                >
-                  Edit
-                </span>
-              )}
-              {canDelete && (
-                <span 
-                  className="comment-action" 
-                  onClick={deleteComment}
-                  style={{ color: 'red' }} 
-                >
-                  Delete
-                </span>
-              )}
+              <span
+                className="comment-action"
+                onClick={() => setActiveComment({ id: comment.id, type: "replying" })}
+              >
+                Reply
+              </span>
+              <span
+                className="comment-action"
+                onClick={() => setActiveComment({ id: comment.id, type: "editing" })}
+              >
+                Edit
+              </span>
+              <span
+                className="comment-action"
+                onClick={deleteComment}
+                style={{ color: "red" }}
+              >
+                Delete
+              </span>
             </div>
 
             {isReplying && (
@@ -122,7 +113,21 @@ export const Comment: React.FC<CommentProps> = ({
           </div>
         </div>
       </div>
+
       {replies}
+
+      {isLightboxOpen && comment.avatarUrl && (
+        <Lightbox
+          open={isLightboxOpen}
+          close={() => setIsLightboxOpen(false)}
+          slides={[{ src: comment.avatarUrl }]}
+          render={{
+            buttonPrev: () => null,  
+            buttonNext: () => null,  
+            buttonClose: undefined, 
+          }}
+        />
+      )}
     </>
   );
 };

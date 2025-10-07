@@ -12,39 +12,79 @@
   justify-content: space-between;
 }
 
+
+
 .navbar_logo {
   color: #fff;
   font-size: 18px;
   font-weight: bold;
-  flex-shrink: 0;
+  display: flex;
+  align-items: center;
 }
 
 .logo-icon {
   width: 24px;
   height: 24px;
   margin-right: 8px;
-  vertical-align: middle;
   color: #fff;
-}
-
-
-.navbar_greeting {
-  flex: 1;
-  text-align: center;
-  color: #fff;
-  font-weight: 500;
-  font-size: 18px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-
 }
 
 .navbar_actions {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-shrink: 0;
+}
+
+.navbar_greeting {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+}
+
+.avatar-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.navbar_avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid;
+  object-fit: cover;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.navbar_avatar:hover {
+  opacity: 0.8;
+}
+
+.remove-avatar-button {
+  margin-left: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background-color: #f9f9f9;
+  border: 1px solid #ccc;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  margin-right: 10px;
+}
+
+.remove-avatar-button:hover {
+  background-color: #e0e0e0;
+}
+
+.remove-avatar-icon {
+  width: 16px;
+  height: 16px;
+  color: #333;
 }
 
 .logout-button {
@@ -58,7 +98,6 @@
   font-size: 14px;
   color: #333;
   border-radius: 6px;
-  transition: background-color 0.2s, color 0.2s;
 }
 
 .logout-button:hover {
@@ -80,26 +119,33 @@
   }
 }
 
-@media (max-width: 1024px) {
-  .navbar_greeting {
-    font-size: 16px;
+@media (max-width: 640px) {
+  .navbar_avatar {
+    width: 28px;
+    height: 28px;
   }
-  .navbar_logo {
-    font-size: 16px;
+  .remove-avatar-button {
+    width: 18px;
+    height: 18px;
   }
-  .logout-button {
-    font-size: 13px;
-    padding: 5px 10px;
+  .remove-avatar-icon {
+    width: 14px;
+    height: 14px;
   }
 }
 
-@media (max-width: 640px) {
-  .navbar_greeting {
-    font-size: 14px;
-    padding: 0 5px;
+@media (max-width: 435px) {
+  .navbar_logo_text {
+    font-size: 11px;
   }
-  .logout-button {
-    font-size: 12px;
-    padding: 4px 8px;
+
+  .navbar_greeting_text {
+    font-size: 11px;
+    white-space: nowrap;
+    margin-left: 6px;
   }
+  .remove-avatar-button {
+    margin-right: 0px;
+  }
+  
 }

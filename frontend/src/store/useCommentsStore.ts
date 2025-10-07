@@ -18,6 +18,7 @@ interface UserType {
   id: string;
   name: string;
   email: string;
+  avatarUrl?: string;
 }
 
 interface CommentsStore {
@@ -38,6 +39,7 @@ const transformComment = (rawComment: RawComment): CommentType => ({
   userId: rawComment.user.id,
   parentId: rawComment.parentId,
   createdAt: rawComment.createdAt,
+  avatarUrl: (rawComment.user as any).avatarUrl || "./user-icon.png",
 });
 
 const transformUser = (apiUser: UserType): UserType => apiUser;
@@ -63,10 +65,8 @@ export const useCommentsStore = create<CommentsStore>((set, get) => ({
       const payload = { comment: text };
       let res;
       if (parentId) {
-        // Reply: POST /comments/{parentId}/replies
         res = await axiosInstance.post(`/comments/${parentId}/replies`, payload);
       } else {
-        // Root: POST /comments
         res = await axiosInstance.post("/comments", payload);
       }
       const newComment = transformComment(res.data as RawComment);

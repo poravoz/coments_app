@@ -13,6 +13,7 @@ export interface CommentType {
   userId: string;
   parentId: string | null;
   createdAt: string;
+  avatarUrl?: string;
 }
 
 export const Comments = () =>  {
