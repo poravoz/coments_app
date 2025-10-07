@@ -120,8 +120,17 @@ export const Captcha: React.FC<CaptchaProps> = ({
 
   return (
     <div className="captcha-container">
-      <div className="captcha-header">
-        <p className="captcha-label">Enter the CAPTCHA</p>
+      <p className="captcha-label">Enter the CAPTCHA</p>
+
+      <div className="captcha-box">
+        <div className="captcha-text">
+          {captchaStr.split("").map((char, i) => (
+            <span key={i} className="captcha-char" style={getCharTransform(i)}>
+              {char}
+            </span>
+          ))}
+        </div>
+
         <button
           type="button"
           className="captcha-refresh"
@@ -131,20 +140,7 @@ export const Captcha: React.FC<CaptchaProps> = ({
         >
           <RefreshCcw size={16} />
         </button>
-      </div>
-      
-      <div className="captcha-box">
-        <div className="captcha-text">
-          {captchaStr.split("").map((char, i) => (
-            <span
-              key={i}
-              className="captcha-char"
-              style={getCharTransform(i)}
-            >
-              {char}
-            </span>
-          ))}
-        </div>
+
         <div className="noise-overlay"></div>
       </div>
 
@@ -158,5 +154,6 @@ export const Captcha: React.FC<CaptchaProps> = ({
         maxLength={captchaStr.length}
       />
     </div>
+
   );
 };

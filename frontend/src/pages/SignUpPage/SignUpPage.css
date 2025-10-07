@@ -1,7 +1,14 @@
-* { box-sizing: border-box; }
+*, *::before, *::after {
+  box-sizing: border-box;
+}
 
 html, body, #root, .App {
+  min-height: 100vh;
+  height: auto;
+  overflow-x: hidden;
+  overflow: hidden;
   background-color: #121212;
+  margin: 0;
 }
 
 html, body {
@@ -11,23 +18,24 @@ html, body {
 }
 
 .register-container {
-  min-height: 100vh;
+  min-height: 96vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #121212;
   padding: 16px;
+  background-color: #121212;
 }
 
 .register-card {
   width: 100%;
-  max-width: 400px; 
+  max-width: 420px;
   background-color: #1e1e1e;
-  padding: 24px; 
+  padding: 32px;
   border-radius: 12px;
   box-shadow: 0 6px 20px rgba(0,0,0,0.5);
-  max-height: 95vh; 
-  overflow-y: auto;
+  overflow: hidden; 
+  max-height: none; 
+  margin-top: 70px;
 }
 
 .register-header { 
@@ -193,17 +201,9 @@ html, body {
   html, body, #root, .App {
     overflow-y: auto;
   }
-  
-  .register-container {
-    min-height: 100vh;
-    padding: 12px;
-  }
 }
 
 @media (max-height: 600px) {
-  .register-card {
-    max-height: 98vh;
-  }
   
   .register-form {
     gap: 12px;
