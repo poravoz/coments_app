@@ -1,52 +1,94 @@
 .comment-form {
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .comment-form-textarea {
-    width: 100%;
-    height: 64px;
-    background: #1a1a1a;
-    border: 1px solid #333;
-    color: #fefefe;
-    border-radius: 8px;
-    padding: 10px;
-    font-size: 14px;
-    resize: none;
-  }
-  
-  .comment-form-actions {
-    margin-top: 8px;
-  }
-  
-  .comment-form-button {
-    padding: 6px 16px;
-    background: #3b82f6;
-    border: none;
-    border-radius: 6px;
-    color: #fff;
-    font-weight: 500;
-    transition: background 0.3s;
-  }
-  
-  .comment-form-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-  
-  .comment-form-button:hover:enabled {
-    background: #2563eb;
-  }
-  
-  .comment-form-cancel-button {
-    background: transparent;
-    border: 1px solid #555;
-    color: #bbb;
-    margin-left: 6px;
-  }
-  
-  .comment-form-cancel-button:hover {
-    background: #222;
-    color: #fff;
-  }
-  
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.comment-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.comment-form-textarea {
+  width: 100%;
+  height: 64px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  color: #fefefe;
+  border-radius: 8px;
+  padding: 10px 40px 10px 10px;
+  font-size: 14px;
+  resize: none;
+  outline: none;
+}
+
+.comment-send-icon {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #3b82f6;
+  opacity: 0.8;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.comment-send-icon:hover {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.1);
+}
+
+.comment-send-icon:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.comment-form-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.comment-icons {
+  display: flex;
+  gap: 10px;
+}
+
+.comment-icon-button {
+  background: transparent;
+  border: none;
+  color: #bbb;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.comment-icon-button:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.comment-form-button {
+  padding: 6px 16px;
+  background: #3b82f6;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-weight: 500;
+  transition: background 0.3s;
+}
+
+.comment-form-cancel-button {
+  background: transparent;
+  border: 1px solid #555;
+  color: #bbb;
+  margin-left: 6px;
+}
+
+.comment-form-cancel-button:hover {
+  background: #222;
+  color: #fff;
+}
