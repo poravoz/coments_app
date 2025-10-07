@@ -2,17 +2,17 @@ import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, OneToMany, JoinColum
 import { UserEntity } from "src/users/entities/user.entity";
 
 export interface Attachment {
-  type: 'image' | 'video' | 'text';
+  type: 'image' | 'video' | 'attachment';
   url: string;
 }
 
-@Entity() 
+@Entity()
 export class CommentEntity {
     @PrimaryGeneratedColumn('uuid')
     public id?: string;
 
-    @Column({ nullable: true })
-    public comment?: string;
+    @Column({ type: 'text', nullable: true })
+    public comment?: string | null; // Explicitly use 'text' type for PostgreSQL
 
     @ManyToOne(() => UserEntity, user => user.comments, { 
         eager: true,
@@ -39,5 +39,5 @@ export class CommentEntity {
     public createdAt: Date;
 
     @Column({ type: 'json', nullable: true })
-    public attachments?: Attachment[];
+    public attachments?: Attachment[] | null;
 }

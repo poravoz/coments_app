@@ -1,4 +1,4 @@
-import { Body, Req, Controller, HttpCode, Post, UseGuards, HttpException, HttpStatus, Res, Get, UnauthorizedException } from '@nestjs/common';
+import { Body, Req, Controller, HttpCode, Post, UseGuards, HttpException, HttpStatus, Res, Get, } from '@nestjs/common';
 import { AuthenticationService } from './authentication.service';
 import { RegisterDto } from './dto/register.dto';
 import type RequestWithUser from './interfaces/requestWithUser.interface';
@@ -22,7 +22,7 @@ export class AuthenticationController {
     const { captchaToken, captchaValue, ...registrationData } = body;
 
     if (!captchaToken || !captchaValue) {
-      throw new HttpException('CAPTCHA required', HttpStatus.BAD_REQUEST);
+      throw new HttpException('CAPTCHA is required', HttpStatus.BAD_REQUEST);
     }
 
     const valid = this.captchaService.validateCaptcha(captchaToken, captchaValue);
@@ -45,12 +45,12 @@ export class AuthenticationController {
     
     if (captchaRequired) {
       if (!captchaToken || !captchaValue) {
-        throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
+        throw new HttpException('CAPTCHA is required', HttpStatus.BAD_REQUEST);
       }
 
       const valid = this.captchaService.validateCaptcha(captchaToken, captchaValue);
       if (!valid) {
-        throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
+        throw new HttpException('Invalid CAPTCHA', HttpStatus.BAD_REQUEST);
       }
     }
 
@@ -88,7 +88,7 @@ export class AuthenticationController {
   @Post('log-out')
   async logOut(@Req() request: RequestWithUser, @Res({ passthrough: true }) response: Response) {
     const user = request.user;
-    if (!user || !user.id) throw new HttpException('Something went wrong', HttpStatus.UNAUTHORIZED);
+    if (!user || !user.id) throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
 
     await this.usersService.removeRefreshToken(user.id);
     const cookies = this.authenticationService.getCookiesForLogOut();
@@ -117,7 +117,7 @@ export class AuthenticationController {
   @Get('refresh')
   refresh(@Req() request: RequestWithUser, @Res({ passthrough: true }) response: Response) {
     if (!request.user?.id) {
-      throw new HttpException('Something went wrong', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException('HttpException', HttpStatus.INTERNAL_SERVER_ERROR);
     }
     const accessTokenCookie = this.authenticationService.getCookieWithJwtAccessToken(request.user.id);
     response.setHeader('Set-Cookie', accessTokenCookie);

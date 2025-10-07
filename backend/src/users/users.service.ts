@@ -34,93 +34,115 @@ export class UsersService {
     });
   }
 
-  async getAllUsers() {
-    return await this.usersRepository.find({ relations: ['comments'] }); 
+  async getAllUsers(): Promise<UserEntity[]> {
+    return await this.usersRepository.find({ relations: ['comments'] });
   }
 
-  async getUserById(id: string) {
+  async getUserById(id: string): Promise<UserEntity[]> {
     if (!id) {
-      throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
+      return [];
     }
-    const user = await this.usersRepository.findOne({ 
+    const user = await this.usersRepository.findOne({
       where: { id },
-      relations: ['comments']
+      relations: ['comments'],
     });
-    if (!user) {
-      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
+    return user ? [user] : [];
+  }
+
+  async getUserByEmail(email: string): Promise<UserEntity[]> {
+    if (!email) {
+      return [];
     }
-    return user;
-  }
-
-  async getUserByEmail(email: string) {
-    const user = await this.usersRepository.findOne({ 
+    const user = await this.usersRepository.findOne({
       where: { email },
-      relations: ['comments'] 
+      relations: ['comments'],
     });
-    if (user) return user;
-    throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
+    return user ? [user] : [];
   }
 
-  async createUser(userData: CreateUserDto) {
+  async createUser(userData: CreateUserDto): Promise<UserEntity> {
     const newUser = this.usersRepository.create(userData);
     return await this.usersRepository.save(newUser);
   }
 
-  async updateUser(id: string, updateData: Partial<UpdateUserDto>) {
-    const user = await this.getUserById(id);
+  async updateUser(id: string, updateData: Partial<UpdateUserDto>): Promise<UserEntity> {
+    const users = await this.getUserById(id);
+    if (users.length === 0) {
+      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
+    }
+    const user = users[0]; // Take the first user
     Object.assign(user, updateData);
     return await this.usersRepository.save(user);
   }
 
-  async uploadAvatar(userId: string, file: Express.Multer.File) {
+  async uploadAvatar(userId: string, file: Express.Multer.File): Promise<UserEntity> {
     if (!userId) {
       throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
     }
     if (!['image/jpeg', 'image/gif', 'image/png'].includes(file.mimetype)) {
       throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
     }
+    const users = await this.getUserById(userId);
+    if (users.length === 0) {
+      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
+    }
+    const user = users[0];
     const result = await this.uploadToCloudinary(file);
     await this.usersRepository.update(userId, { avatarUrl: result.secure_url });
-    const updatedUser = await this.getUserById(userId);
+    const updatedUser = (await this.getUserById(userId))[0];
+    if (!updatedUser) {
+      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
+    }
     return updatedUser;
   }
 
-  async removeAvatar(userId: string) {
+  async removeAvatar(userId: string): Promise<UserEntity> {
     if (!userId) {
       throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
     }
+    const users = await this.getUserById(userId);
+    if (users.length === 0) {
+      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
+    }
     await this.usersRepository.update(userId, { avatarUrl: null });
-    const updatedUser = await this.getUserById(userId);
+    const updatedUser = (await this.getUserById(userId))[0];
+    if (!updatedUser) {
+      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
+    }
     return updatedUser;
   }
 
-  async removeUser(id: string) {
-    const user = await this.getUserById(id);
-    return await this.usersRepository.remove(user); 
+  async removeUser(id: string): Promise<UserEntity> {
+    const users = await this.getUserById(id);
+    if (users.length === 0) {
+      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
+    }
+    const user = users[0];
+    return await this.usersRepository.remove(user);
   }
 
   async setCurrentRefreshToken(refreshToken: string, userId: string) {
     const currentHashedRefreshToken = await bcrypt.hash(refreshToken, 10);
     await this.usersRepository.update(userId, {
-      currentHashedRefreshToken
+      currentHashedRefreshToken,
     });
   }
 
-  async getById(id: string) {
+  async getById(id: string): Promise<UserEntity[]> {
     const user = await this.usersRepository.findOne({ where: { id } });
-    if (user) {
-      return user;
-    }
-    throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
+    return user ? [user] : [];
   }
- 
-  async getUserIfRefreshTokenMatches(refreshToken: string, userId: string) {
-    const user = await this.getById(userId);
-    if (!user.currentHashedRefreshToken) return null;
-    const isRefreshTokenMatching = await bcrypt.compare(
-      refreshToken,
-      user.currentHashedRefreshToken
-    );
+
+  async getUserIfRefreshTokenMatches(refreshToken: string, userId: string): Promise<UserEntity | null> {
+    const users = await this.getById(userId);
+    if (users.length === 0) {
+      return null;
+    }
+    const user = users[0];
+    if (!user.currentHashedRefreshToken) {
+      return null;
+    }
+    const isRefreshTokenMatching = await bcrypt.compare(refreshToken, user.currentHashedRefreshToken);
     if (isRefreshTokenMatching) {
       return user;
     }
@@ -129,7 +151,7 @@ export class UsersService {
 
   async removeRefreshToken(userId: string) {
     return this.usersRepository.update(userId, {
-      currentHashedRefreshToken: null
+      currentHashedRefreshToken: null,
     });
   }
 }

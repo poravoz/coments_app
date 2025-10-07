@@ -21,7 +21,11 @@ export class UsersController {
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateData: Partial<UpdateUserDto>) {
+  @UseGuards(JwtRefreshGuard)
+  async update(@Param('id') id: string, @Body() updateData: Partial<UpdateUserDto>, @Req() req: Request & { user: UserEntity }) {
+    if (req.user.id !== id) {
+      throw new HttpException('Something went wrong', HttpStatus.FORBIDDEN);
+    }
     return this.usersService.updateUser(id, updateData);
   }
 
@@ -33,10 +37,10 @@ export class UsersController {
     @Req() req: Request & { user: UserEntity } 
   ) {
     if (!req.user || !req.user.id) {
-      throw new HttpException('Something went wrong', HttpStatus.UNAUTHORIZED);
+      throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
     }
     if (!file) {
-      throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
+      throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST); 
     }
     return this.usersService.uploadAvatar(req.user.id, file);
   }
@@ -45,13 +49,17 @@ export class UsersController {
   @UseGuards(JwtRefreshGuard)
   async removeAvatar(@Req() req: Request & { user: UserEntity }) { 
     if (!req.user || !req.user.id) {
-      throw new HttpException('Something went wrong', HttpStatus.UNAUTHORIZED);
+      throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
     }
     return this.usersService.removeAvatar(req.user.id);
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string) {
+  @UseGuards(JwtRefreshGuard)
+  async remove(@Param('id') id: string, @Req() req: Request & { user: UserEntity }) {
+    if (req.user.id !== id) {
+      throw new HttpException('Something went wrong', HttpStatus.FORBIDDEN);
+    }
     return this.usersService.removeUser(id);
   }
 }

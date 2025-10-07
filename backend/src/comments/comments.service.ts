@@ -23,7 +23,10 @@ export default class CommentsService {
       const stream = cloudinary.uploader.upload_stream(
         { resource_type },
         (error: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
-          if (error || !result) return reject(error || new Error('Upload failed'));
+          if (error || !result) {
+            console.error('Cloudinary upload error:', error);
+            return reject(error || new Error('Upload to Cloudinary failed'));
+          }
           resolve({ secure_url: result.secure_url });
         }
       );
@@ -31,41 +34,51 @@ export default class CommentsService {
     });
   }
 
-  private async processFiles(files: { images?: Express.Multer.File[], video?: Express.Multer.File[], textFile?: Express.Multer.File[] }): Promise<Attachment[]> {
+  private async processFiles(files?: { images?: Express.Multer.File[], video?: Express.Multer.File[], attachment?: Express.Multer.File[] }): Promise<Attachment[]> {
     const attachments: Attachment[] = [];
 
-    // Process images
-    if (files.images && files.images.length > 0) {
+    if (files?.images && files.images.length > 0) {
       for (const image of files.images) {
         if (!['image/jpeg', 'image/gif', 'image/png'].includes(image.mimetype)) {
-          throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
+          throw new HttpException(`Something went wrong: ${image.mimetype}`, HttpStatus.BAD_REQUEST);
         }
         const result = await this.uploadToCloudinary(image, 'image');
         attachments.push({ type: 'image', url: result.secure_url });
       }
     }
 
-    // Process video
-    if (files.video && files.video.length > 0) {
+    if (files?.video && files.video.length > 0) {
       const video = files.video[0];
       if (!video.mimetype.startsWith('video/')) {
-        throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
+        throw new HttpException(`Something went wrong: ${video.mimetype}`, HttpStatus.BAD_REQUEST);
       }
       const result = await this.uploadToCloudinary(video, 'video');
       attachments.push({ type: 'video', url: result.secure_url });
     }
 
-    // Process text file
-    if (files.textFile && files.textFile.length > 0) {
-      const textFile = files.textFile[0];
-      if (textFile.mimetype !== 'text/plain') {
-        throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
+    if (files?.attachment && files.attachment.length > 0) {
+      const attachmentFile = files.attachment[0];
+      const allowedMimetypes = [
+        'text/plain',
+        'application/octet-stream',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/msword',
+        'application/pdf',
+        'application/vnd.ms-excel'
+      ];
+      if (!allowedMimetypes.includes(attachmentFile.mimetype)) {
+        throw new HttpException(`Something went wrong: ${attachmentFile.mimetype}`, HttpStatus.BAD_REQUEST);
       }
-      if (textFile.size > 100 * 1024) {
-        throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
+      if (attachmentFile.size > 100 * 1024) {
+        throw new HttpException('The file size is 100 KB', HttpStatus.BAD_REQUEST);
       }
-      const result = await this.uploadToCloudinary(textFile, 'raw');
-      attachments.push({ type: 'text', url: result.secure_url });
+      try {
+        const result = await this.uploadToCloudinary(attachmentFile, 'raw');
+        attachments.push({ type: 'attachment', url: result.secure_url });
+      } catch (error) {
+        console.error('Error uploading attachment to Cloudinary:', error);
+        throw new HttpException(`Something went wrong: ${error.message}`, HttpStatus.BAD_REQUEST);
+      }
     }
 
     return attachments;
@@ -95,9 +108,13 @@ export default class CommentsService {
     };
   }
 
-  async createComment(commentDto: CreateCommentDto & { userId: string }, files: { images?: Express.Multer.File[], video?: Express.Multer.File[], textFile?: Express.Multer.File[] }): Promise<CommentEntity> {
-    const user = await this.usersService.getUserById(commentDto.userId);
-    const attachments = await this.processFiles(files);
+  async createComment(commentDto: CreateCommentDto, userId: string, files?: { images?: Express.Multer.File[], video?: Express.Multer.File[], attachment?: Express.Multer.File[] }): Promise<CommentEntity> {
+    const users = await this.usersService.getUserById(userId);
+    if (users.length === 0) {
+      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
+    }
+    const user = users[0];
+    const attachments = files ? await this.processFiles(files) : [];
     const newComment = this.commentRepository.create({
       comment: commentDto.comment,
       user,
@@ -108,7 +125,7 @@ export default class CommentsService {
     return newComment; 
   }
 
-  async createReply(parentId: string, replyDto: CreateReplyDto, userId: string, files: { images?: Express.Multer.File[], video?: Express.Multer.File[], textFile?: Express.Multer.File[] }): Promise<CommentEntity> {
+  async createReply(parentId: string, replyDto: CreateReplyDto, userId: string, files?: { images?: Express.Multer.File[], video?: Express.Multer.File[], attachment?: Express.Multer.File[] }): Promise<CommentEntity> {
     const parentComment = await this.commentRepository.findOne({ 
       where: { id: parentId },
       relations: ['children']
@@ -117,8 +134,12 @@ export default class CommentsService {
       throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
     }
 
-    const user = await this.usersService.getUserById(userId);
-    const attachments = await this.processFiles(files);
+    const users = await this.usersService.getUserById(userId);
+    if (users.length === 0) {
+      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
+    }
+    const user = users[0];
+    const attachments = files ? await this.processFiles(files) : [];
     const newReply = this.commentRepository.create({
       comment: replyDto.comment,
       user,
@@ -129,15 +150,40 @@ export default class CommentsService {
     return newReply;
   }
 
-  async updateComment(id: string, commentDto: UpdateCommentDto, files?: { images?: Express.Multer.File[], video?: Express.Multer.File[], textFile?: Express.Multer.File[] }): Promise<CommentEntity> {
-    let attachments: Attachment[] | undefined;
-    if (files) {
-      attachments = await this.processFiles(files);
-    }
-    await this.commentRepository.update(id, { 
-      comment: commentDto.comment,
-      attachments: attachments && attachments.length > 0 ? attachments : undefined 
+  async updateComment(id: string, updateDto: UpdateCommentDto, userId: string, files?: { images?: Express.Multer.File[], video?: Express.Multer.File[], attachment?: Express.Multer.File[] }): Promise<CommentEntity> {
+    const comment = await this.commentRepository.findOne({ 
+      where: { id },
+      relations: ['user'] 
     });
+    if (!comment) {
+      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
+    }
+    if (comment.user.id !== userId) {
+      throw new HttpException('Something went wrong', HttpStatus.FORBIDDEN);
+    }
+  
+    const updateData: Partial<CommentEntity> = {};
+  
+    // Update comment text only if provided (e.g., set to "" to remove text)
+    if (updateDto.comment !== undefined) {
+      updateData.comment = updateDto.comment.trim().length > 0 ? updateDto.comment : null;
+    }
+  
+    // Update attachments only if new files are provided
+    if (files !== undefined) {
+      const newAttachments = await this.processFiles(files);
+      updateData.attachments = newAttachments.length > 0 ? newAttachments : null;
+    }
+  
+    // Clear attachments if clearAttachments is true
+    if (updateDto.clearAttachments) {
+      updateData.attachments = null;
+    }
+  
+    if (Object.keys(updateData).length > 0) {
+      await this.commentRepository.update(id, updateData);
+    }
+  
     const updatedComment = await this.commentRepository.findOne({ 
       where: { id },
       relations: ['user'] 

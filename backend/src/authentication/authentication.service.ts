@@ -1,7 +1,8 @@
+import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus } from '@nestjs/common';
 import { UsersService } from "src/users/users.service";
-import  { PostgresErrorCode }  from "../database/postgresErrorCodes.enum";
+import { PostgresErrorCode } from "../database/postgresErrorCodes.enum";
 import * as bcrypt from 'bcrypt';
-import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { RegisterDto } from "./dto/register.dto";
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -77,15 +78,19 @@ export class AuthenticationService {
             return createdUser;
         } catch(error) {
             if(error?.code === PostgresErrorCode.UniqueViolation) {
-                throw new HttpException("Something went wrong", HttpStatus.BAD_REQUEST);
+                throw new HttpException("Something went wrong", HttpStatus.BAD_REQUEST); 
             }
-            throw new HttpException('Something went wrong', HttpStatus.INTERNAL_SERVER_ERROR);
+            throw new HttpException('Something went wrong', HttpStatus.INTERNAL_SERVER_ERROR);  
         }
     }
 
     public async getAuthenticatedUser(email: string, plainTextPassword: string): Promise<UserEntity> {
         try {
-          const user = await this.usersService.getUserByEmail(email);
+          const users = await this.usersService.getUserByEmail(email);
+          if (users.length === 0) {
+            throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
+          }
+          const user = users[0];
           if (!user.password) {
             throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
           }
@@ -100,7 +105,7 @@ export class AuthenticationService {
         } catch (error) {
           throw error;
         }
-      }
+    }
     
     private async verifyPassword(plainTextPassword: string, hashedPassword: string): Promise<boolean> {
         const isPasswordMatching = await bcrypt.compare(
@@ -108,27 +113,27 @@ export class AuthenticationService {
           hashedPassword
         );
         return isPasswordMatching;
-      }
+    }
 
-      public async checkAuth(user: UserEntity) {
+    public async checkAuth(user: UserEntity) {
         if (!user) {
-          throw new HttpException('Something went wrong', HttpStatus.UNAUTHORIZED);
+          throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
         }
         
         const { password, currentHashedRefreshToken, ...safeUser } = user;
         return safeUser;
-      }
+    }
 
-      public getCookieWithJwtAccessToken(userId: string) {
+    public getCookieWithJwtAccessToken(userId: string) {
         const payload: TokenPayload = { userId };
         const token = this.jwtService.sign(payload, {
           secret: this.configService.get('JWT_ACCESS_TOKEN_SECRET'),
           expiresIn: `${this.configService.get('JWT_ACCESS_TOKEN_EXPIRATION_TIME')}s`
         });
         return `Authentication=${token}; HttpOnly; Path=/; Max-Age=${this.configService.get('JWT_ACCESS_TOKEN_EXPIRATION_TIME')}`;
-      }
+    }
 
-      public getCookieWithJwtRefreshToken(userId: string) {
+    public getCookieWithJwtRefreshToken(userId: string) {
         const payload: TokenPayload = { userId };
         const token = this.jwtService.sign(payload, {
           secret: this.configService.get('JWT_REFRESH_TOKEN_SECRET'),
@@ -139,9 +144,9 @@ export class AuthenticationService {
           cookie,
           token
         }
-      }
+    }
 
-      public getCookieForLogOut() {
+    public getCookieForLogOut() {
         return `Authentication=; HttpOnly; Path=/; Max-Age=0`;
-      }
+    }
 }
