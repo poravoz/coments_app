@@ -1,14 +1,16 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CommentEntity, Attachment } from './entities/comment.entity';
+import { CommentEntity } from './entities/comment.entity';
 import { CreateCommentDto } from './dto/createComment.dto';
 import { UpdateCommentDto } from './dto/updateComment.dto';
-import { CreateReplyDto } from './dto/createReplyCommentDto';
 import { UsersService } from 'src/users/users.service';
 import cloudinary from '../database/cloudinary';
 import { UploadApiResponse, UploadApiErrorResponse } from 'cloudinary';
 import { CommentResponse } from './interface/comment-response.dto';
+import { CreateReplyDto } from './dto/createReplyCommentDto';
+import { Attachment } from './interface/attachment.dto';
+
 
 @Injectable()
 export default class CommentsService {
@@ -34,7 +36,12 @@ export default class CommentsService {
     });
   }
 
-  private async processFiles(files?: { images?: Express.Multer.File[], video?: Express.Multer.File[], attachment?: Express.Multer.File[] }): Promise<Attachment[]> {
+  private async processFiles(files?: 
+                              { images?: Express.Multer.File[], 
+                                video?: Express.Multer.File[], 
+                                attachment?: Express.Multer.File[] }): 
+                              Promise<Attachment[]> {
+
     const attachments: Attachment[] = [];
 
     if (files?.images && files.images.length > 0) {
@@ -42,6 +49,7 @@ export default class CommentsService {
         if (!['image/jpeg', 'image/gif', 'image/png'].includes(image.mimetype)) {
           throw new HttpException(`Something went wrong: ${image.mimetype}`, HttpStatus.BAD_REQUEST);
         }
+
         const result = await this.uploadToCloudinary(image, 'image');
         attachments.push({ type: 'image', url: result.secure_url });
       }
@@ -108,7 +116,14 @@ export default class CommentsService {
     };
   }
 
-  async createComment(commentDto: CreateCommentDto, userId: string, files?: { images?: Express.Multer.File[], video?: Express.Multer.File[], attachment?: Express.Multer.File[] }): Promise<CommentEntity> {
+  async createComment(commentDto: CreateCommentDto, 
+                      userId: string, 
+                      files?: { 
+                        images?: Express.Multer.File[], 
+                        video?: Express.Multer.File[], 
+                        attachment?: Express.Multer.File[] }): 
+                      Promise<CommentEntity> {
+
     const users = await this.usersService.getUserById(userId);
     if (users.length === 0) {
       throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
@@ -125,7 +140,14 @@ export default class CommentsService {
     return newComment; 
   }
 
-  async createReply(parentId: string, replyDto: CreateReplyDto, userId: string, files?: { images?: Express.Multer.File[], video?: Express.Multer.File[], attachment?: Express.Multer.File[] }): Promise<CommentEntity> {
+  async createReply(parentId: string, 
+                    replyDto: CreateReplyDto, 
+                    userId: string, files?: { 
+                      images?: Express.Multer.File[], 
+                      video?: Express.Multer.File[], 
+                      attachment?: Express.Multer.File[] }): 
+                    Promise<CommentEntity> {
+
     const parentComment = await this.commentRepository.findOne({ 
       where: { id: parentId },
       relations: ['children']
@@ -150,10 +172,18 @@ export default class CommentsService {
     return newReply;
   }
 
-  async updateComment(id: string, updateDto: UpdateCommentDto, userId: string, files?: { images?: Express.Multer.File[], video?: Express.Multer.File[], attachment?: Express.Multer.File[] }): Promise<CommentEntity> {
+  async updateComment(id: string, 
+                      updateDto: UpdateCommentDto, 
+                      userId: string, files?: 
+                                              { 
+                                                images?: Express.Multer.File[], 
+                                                video?: Express.Multer.File[], 
+                                                attachment?: Express.Multer.File[] }): 
+                                              Promise<CommentEntity> {
+
     const comment = await this.commentRepository.findOne({ 
       where: { id },
-      relations: ['user'] 
+      relations: ['user']
     });
     if (!comment) {
       throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
@@ -164,19 +194,20 @@ export default class CommentsService {
   
     const updateData: Partial<CommentEntity> = {};
   
-    // Update comment text only if provided (e.g., set to "" to remove text)
     if (updateDto.comment !== undefined) {
-      updateData.comment = updateDto.comment.trim().length > 0 ? updateDto.comment : null;
+      updateData.comment = updateDto.comment;
     }
   
-    // Update attachments only if new files are provided
-    if (files !== undefined) {
+    const hasFiles = files && (
+      (files.images && files.images.length > 0) ||
+      (files.video && files.video.length > 0) ||
+      (files.attachment && files.attachment.length > 0)
+    );
+  
+    if (hasFiles) {
       const newAttachments = await this.processFiles(files);
       updateData.attachments = newAttachments.length > 0 ? newAttachments : null;
-    }
-  
-    // Clear attachments if clearAttachments is true
-    if (updateDto.clearAttachments) {
+    } else if (updateDto.clearAttachments) {
       updateData.attachments = null;
     }
   
@@ -186,11 +217,13 @@ export default class CommentsService {
   
     const updatedComment = await this.commentRepository.findOne({ 
       where: { id },
-      relations: ['user'] 
+      relations: ['user']
     });
+    
     if (!updatedComment) {
       throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
     }
+  
     return updatedComment;
   }
 

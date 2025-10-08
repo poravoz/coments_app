@@ -5,6 +5,9 @@ export interface CommentType {
     userId: string;
     parentId: string | null;
     createdAt: string;
-    avatarUrl?: string;
+    avatarUrl: string;
+    attachments?: Array<{
+      type: 'image' | 'video' | 'attachment';
+      url: string;
+    }>;
   }
-  

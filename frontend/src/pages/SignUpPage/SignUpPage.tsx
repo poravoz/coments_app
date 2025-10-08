@@ -21,22 +21,51 @@ export const SignUpPage: React.FC = () => {
   const navigate = useNavigate();
 
   const validateForm = () => {    
-    if (!formData.name.trim()) return toast.error("Full name is required");
-    if (!formData.email.trim()) return toast.error("Email is required");
-    if (!/\S+@\S+\.\S+/.test(formData.email))
-      return toast.error("Invalid email format");
-    if (!formData.password.trim()) return toast.error("Password is required");
-    if (formData.password.length < 6)
-      return toast.error("Password must be at least 6 characters");
-    if (formData.password !== formData.repeatPassword)
-      return toast.error("Passwords do not match");
-    if (captchaValid !== true) return toast.error("Please complete the CAPTCHA correctly");
+    if (!formData.name.trim()) {
+      toast.error("Name is required");
+      return false;
+    }
+
+    if (formData.name.trim().length < 2 || formData.name.trim().length > 10) {
+      toast.error("Name must be between 2 and 10 characters");
+      return false;
+    }
+  
+    if (!formData.email.trim()) {
+      toast.error("Email is required");
+      return false;
+    }
+
+    if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      toast.error("Invalid email format");
+      return false;
+    }
+    if (!formData.password.trim()) {
+      toast.error("Password is required");
+      return false;
+    }
+
+    if (formData.password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return false;
+    }
+
+    if (formData.password !== formData.repeatPassword) {
+      toast.error("Passwords do not match");
+      return false;
+    }
+
+    if (captchaValid !== true) {
+      toast.error("Please complete the CAPTCHA correctly");
+      return false;
+    }
+    
     return true;
   };  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateForm() === true) {
+    if (validateForm()) {
       try {
         await signUp({
           ...formData,
@@ -62,17 +91,18 @@ export const SignUpPage: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="register-form">
           <div className="form-group">
-            <label className="form-label">Full Name</label>
+            <label className="form-label">Name</label>
             <div className="input-wrapper">
               <User className="input-icon" size={18} />
               <input
                 type="text"
                 className="form-input"
-                placeholder="John Doe"
+                placeholder="Mykola"
                 value={formData.name}
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
+                maxLength={10} 
               />
             </div>
           </div>

@@ -1,10 +1,6 @@
 import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, OneToMany, JoinColumn, CreateDateColumn } from "typeorm";
 import { UserEntity } from "src/users/entities/user.entity";
-
-export interface Attachment {
-  type: 'image' | 'video' | 'attachment';
-  url: string;
-}
+import { Attachment } from "../interface/attachment.dto";
 
 @Entity()
 export class CommentEntity {
@@ -12,7 +8,7 @@ export class CommentEntity {
     public id?: string;
 
     @Column({ type: 'text', nullable: true })
-    public comment?: string | null; // Explicitly use 'text' type for PostgreSQL
+    public comment?: string | null;
 
     @ManyToOne(() => UserEntity, user => user.comments, { 
         eager: true,

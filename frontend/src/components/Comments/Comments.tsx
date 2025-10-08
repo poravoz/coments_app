@@ -5,16 +5,7 @@ import { ActiveComment } from "../../types/types";
 import { Comment } from "../Comment/Comment";
 import { useCommentsStore } from "../../store/useCommentsStore";
 import "./Comments.css";
-
-export interface CommentType {
-  id: string;
-  comment: string;
-  name: string;
-  userId: string;
-  parentId: string | null;
-  createdAt: string;
-  avatarUrl?: string;
-}
+import { CommentType } from "../../types/commentType";
 
 export const Comments = () =>  {
   const [activeComment, setActiveComment] = useState<ActiveComment | null>(null);
@@ -22,22 +13,22 @@ export const Comments = () =>  {
   const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const commentsPerPage = 25;
-  const { comments: storeComments, getComments, createComment, updateComment, deleteComment } = useCommentsStore();
+  const { comments: storeComments, getComments, createComment, updateComment, deleteComment, removeImage } = useCommentsStore();
 
   useEffect(() => {
     getComments();
   }, []);
 
-  const addComment = (text: string, parentId: string | null = null, callback?: () => void) => {
-    createComment(text, parentId).then((newComment) => {
+  const addComment = (text: string, imageFile?: File, parentId: string | null = null, callback?: () => void) => {
+    createComment(text, parentId, imageFile).then((newComment) => {
       if (callback) callback();
     }).catch((error) => {
       console.error("Add comment failed:", error);
     });
   };
 
-  const updateCommentHandler = (text: string, commentId: string) => {
-    updateComment(commentId, text).then(() => {
+  const updateCommentHandler = (text: string, commentId: string, imageFile?: File) => {
+    updateComment(commentId, text, imageFile).then(() => {
       setActiveComment(null);
     }).catch((error) => {
       console.error("Update comment failed:", error);
@@ -122,6 +113,7 @@ export const Comments = () =>  {
         deleteComment={() => openDeleteDialog(comment.id)}
         addComment={addComment}
         updateComment={updateCommentHandler}
+        removeImage={removeImage}
         depth={depth}
       />
     ));
@@ -166,6 +158,7 @@ export const Comments = () =>  {
               deleteComment={() => openDeleteDialog(root.id)}
               addComment={addComment}
               updateComment={updateCommentHandler}
+              removeImage={removeImage}
               depth={0}
             />
           ))
