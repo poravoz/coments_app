@@ -3,10 +3,9 @@ import { useAuthStore } from "../../store/useAuthStore";
 import { useNavigate } from "react-router-dom";
 import "./NavBar.css";
 import { useRef, useState } from "react";
-import Lightbox from "yet-another-react-lightbox";
-import "yet-another-react-lightbox/styles.css";
 import { toast } from "react-hot-toast";
 import { ConfirmDialog } from "../ConfirmDialog/ConfirmDialog";
+import { AvatarLightboxNavBar } from "../Lightbox/AvatarLightboxNavBar";
 
 export const NavBar = () => {
   const { logout, authUser, updateAvatar, removeAvatar } = useAuthStore();
@@ -113,25 +112,12 @@ export const NavBar = () => {
         </div>
       </div>
 
-      {isLightboxOpen && authUser.avatarUrl && (
-        <Lightbox
+      {authUser.avatarUrl && (
+        <AvatarLightboxNavBar
           open={isLightboxOpen}
-          close={() => setIsLightboxOpen(false)}
-          slides={[{ src: authUser.avatarUrl }]}
-          plugins={[]} 
-          render={{
-            buttonPrev: () => null,  
-            buttonNext: () => null,  
-            buttonClose: undefined, 
-          }}
-          toolbar={{
-            buttons: [
-              <button key="update" className="yarl__button" onClick={handleUpdateClick}>
-                Update Avatar
-              </button>,
-              "close",
-            ],
-          }}
+          onClose={() => setIsLightboxOpen(false)}
+          avatarUrl={authUser.avatarUrl}
+          onUpdateClick={handleUpdateClick}
         />
       )}
 

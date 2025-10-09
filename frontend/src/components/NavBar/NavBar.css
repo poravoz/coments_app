@@ -3,7 +3,7 @@
   background-color: #1a1a1a;
   padding: 10px 20px;
   position: fixed;
-  z-index: 5;
+  z-index: 100;
 }
 
 .navbar_content {

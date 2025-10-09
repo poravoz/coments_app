@@ -5,10 +5,24 @@ import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import "./Comment.css";
 import { CommentType } from "../../types/commentType";
-import { X } from "lucide-react";
+import { X, 
+         FileText, 
+         File, 
+         Download, 
+         FileCode, 
+         FileSpreadsheet, 
+         FileImage,
+         FileSignature,
+         FileVideo,
+         FileArchive,
+         FileAudio,
+        } from "lucide-react";
 import { ConfirmDialog } from "../ConfirmDialog/ConfirmDialog";
 import { toast } from "react-hot-toast";
 import { useAuthStore } from "../../store/useAuthStore";
+import { AvatarLightboxComment } from "../Lightbox/AvatarLightboxComment";
+import { ImageLightbox } from "../Lightbox/ImageLightbox";
+import { VideoLightbox } from "../Lightbox/VideoLightbox";
 
 interface CommentProps {
   comment: CommentType;
@@ -16,8 +30,8 @@ interface CommentProps {
   activeComment: ActiveComment | null;
   setActiveComment: React.Dispatch<React.SetStateAction<ActiveComment | null>>;
   deleteComment: () => void;
-  addComment: (text: string, imageFile?: File, videoFile?: File, parentId?: string | null, callback?: () => void) => void;
-  updateComment: (text: string, commentId: string, imageFile?: File, videoFile?: File) => void;
+  addComment: (text: string, imageFile?: File, videoFile?: File, attachmentFile?: File, parentId?: string | null, callback?: () => void) => void;
+  updateComment: (text: string, commentId: string, imageFile?: File, videoFile?: File, attachmentFile?: File) => void;
   removeAttachment: (commentId: string, attachmentIndex: number) => void;
   depth: number;
 }
@@ -68,21 +82,21 @@ export const Comment: React.FC<CommentProps> = ({
   const isEditing = activeComment?.type === "editing" && activeComment.id === comment.id;
   const hasActiveForm = isReplying || isEditing;
 
-  const handleSubmitReply = (text: string, imageFile?: File, videoFile?: File) => {
-    addComment(text, imageFile, videoFile, comment.id, () => {
+  const handleSubmitReply = (text: string, imageFile?: File, videoFile?: File, attachmentFile?: File) => {
+    addComment(text, imageFile, videoFile, attachmentFile, comment.id, () => {
       setActiveComment(null);
     });
   };
 
-  const handleSubmitUpdate = (text: string, imageFile?: File, videoFile?: File) => {
-    const willBeEmpty = !text?.trim() && !imageFile && !videoFile && attachments.length === 0;
+  const handleSubmitUpdate = (text: string, imageFile?: File, videoFile?: File, attachmentFile?: File) => {
+    const willBeEmpty = !text?.trim() && !imageFile && !videoFile && !attachmentFile && attachments.length === 0;
     
     if (willBeEmpty) {
-      toast.error("Comment must have either text, image or video");
+      toast.error("Comment must have either text, image, video or file");
       return;
     }
     
-    updateComment(text, comment.id, imageFile, videoFile);
+    updateComment(text, comment.id, imageFile, videoFile, attachmentFile);
   };
 
   const handleRemoveAttachment = (index: number) => {
@@ -137,8 +151,10 @@ export const Comment: React.FC<CommentProps> = ({
   const attachments = comment.attachments || [];
   const imageAttachments = attachments.filter(att => att.type === 'image');
   const videoAttachments = attachments.filter(att => att.type === 'video');
+  const fileAttachments = attachments.filter(att => att.type === 'attachment');
   const existingImageUrl = imageAttachments[0]?.url;
   const existingVideoUrl = videoAttachments[0]?.url;
+  const existingAttachmentUrl = fileAttachments[0]?.url;
 
   const getDeleteMessage = () => {
     if (!attachmentToDelete) return "";
@@ -157,7 +173,46 @@ export const Comment: React.FC<CommentProps> = ({
   const getAttachmentTitle = () => {
     if (!attachmentToDelete) return "Attachment";
     const attachment = attachments[attachmentToDelete.index];
-    return attachment?.type === 'image' ? 'Image' : 'Video';
+    switch (attachment?.type) {
+      case 'image': return 'Image';
+      case 'video': return 'Video';
+      case 'attachment': return 'File';
+      default: return 'Attachment';
+    }
+  };
+
+  const getFileIcon = (fileName: string) => {
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    switch (ext) {
+      case 'pdf':
+        return <FileText size={24} color="#ff4444" />;
+      case 'doc':
+      case 'docx':
+        return <FileCode size={24} color="#2b579a" />; 
+      case 'xls':
+      case 'xlsx':
+        return <FileSpreadsheet size={24} color="#217346" />; 
+      case 'txt':
+        return <FileSignature size={24} color="#666" />;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+        return <FileImage size={24} color="#ff6b6b" />;
+      case 'mp4':
+      case 'webm':
+      case 'ogg':
+        return <FileVideo size={24} color="#ff9900" />;
+      case 'mp3':
+      case 'wav':
+        return <FileAudio size={24} color="#0099ff" />;
+      case 'zip':
+      case 'rar':
+      case '7z':
+        return <FileArchive size={24} color="#ffcc00" />;
+      default:
+        return <File size={24} color="#666" />;
+    }
   };
 
   return (
@@ -185,7 +240,7 @@ export const Comment: React.FC<CommentProps> = ({
                 )}
                 
                 {/* Display attachments container */}
-                {(imageAttachments.length > 0 || videoAttachments.length > 0) && (
+                {(imageAttachments.length > 0 || videoAttachments.length > 0 || fileAttachments.length > 0) && (
                   <div className="comment-attachments-container">
                     {/* Image attachments */}
                     {imageAttachments.map((attachment, index) => (
@@ -237,6 +292,53 @@ export const Comment: React.FC<CommentProps> = ({
                         )}
                       </div>
                     ))}
+
+                    {/* File attachments */}
+                    {fileAttachments.map((attachment, index) => (
+                      <div key={`file-${index}`} className="comment-attachment">
+                        <div className="file-preview-wrapper" onClick={() => {
+                          fetch(attachment.url)
+                            .then(response => response.blob())
+                            .then(blob => {
+                              const url = URL.createObjectURL(blob);
+                              const link = document.createElement('a');
+                              link.href = url;
+                              link.download = attachment.originalName || 'file';
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                              URL.revokeObjectURL(url);
+                            })
+                            .catch(error => {
+                              console.error('Error downloading file:', error);
+                              toast.error('Error downloading file');
+                            });
+                        }}>
+                          <div className="file-preview">
+                            <div className="file-icon">
+                              {getFileIcon(attachment.originalName || 'file')}
+                            </div>
+                            <div className="file-info">
+                              <div className="file-name">{attachment.originalName || 'file'}</div>
+                              <div className="file-type">File</div>
+                            </div>
+                            <div className="file-download">
+                              <Download size={16} />
+                            </div>
+                          </div>
+                        </div>
+                        {/* Remove attachment button - только для автора */}
+                        {isCommentAuthor && (
+                          <button 
+                            className="remove-attachment-button"
+                            onClick={() => handleRemoveAttachment(attachments.indexOf(attachment))}
+                            type="button"
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -249,7 +351,7 @@ export const Comment: React.FC<CommentProps> = ({
                 )}
                 
                 {/* Show current attachments above the form */}
-                {(imageAttachments.length > 0 || videoAttachments.length > 0) && (
+                {(imageAttachments.length > 0 || videoAttachments.length > 0 || fileAttachments.length > 0) && (
                   <div className="comment-attachments-container">
                     {imageAttachments.map((attachment, index) => (
                       <div key={`image-edit-${index}`} className="comment-attachment">
@@ -296,6 +398,30 @@ export const Comment: React.FC<CommentProps> = ({
                         )}
                       </div>
                     ))}
+                    {fileAttachments.map((attachment, index) => (
+                      <div key={`file-edit-${index}`} className="comment-attachment">
+                        <div className="file-preview-wrapper">
+                          <div className="file-preview">
+                            <div className="file-icon">
+                              {getFileIcon(attachment.originalName || 'file')}
+                            </div>
+                            <div className="file-info">
+                              <div className="file-name">{attachment.originalName || 'file'}</div>
+                              <div className="file-type">{attachment.type}</div>
+                            </div>
+                          </div>
+                        </div>
+                        {isCommentAuthor && (
+                          <button 
+                            className="remove-attachment-button"
+                            onClick={() => handleRemoveAttachment(attachments.indexOf(attachment))}
+                            type="button"
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
                 
@@ -309,6 +435,7 @@ export const Comment: React.FC<CommentProps> = ({
                     handleCancel={() => setActiveComment(null)}
                     existingImageUrl={existingImageUrl}
                     existingVideoUrl={existingVideoUrl}
+                    existingAttachmentUrl={existingAttachmentUrl}
                     onSuccess={() => setActiveComment(null)}
                   />
                 </div>
@@ -324,6 +451,7 @@ export const Comment: React.FC<CommentProps> = ({
                   handleCancel={() => setActiveComment(null)}
                   existingImageUrl={existingImageUrl}
                   existingVideoUrl={existingVideoUrl}
+                  existingAttachmentUrl={existingAttachmentUrl}
                   onSuccess={() => setActiveComment(null)}
                 />
               </div>
@@ -367,72 +495,31 @@ export const Comment: React.FC<CommentProps> = ({
 
       {/* Lightbox for image attachments */}
       {imageAttachments.length > 0 && (
-        <Lightbox
-          open={isLightboxOpen}
-          close={() => setIsLightboxOpen(false)}
-          slides={imageAttachments.map(att => ({ src: att.url }))}
-          index={currentImageIndex}
-          render={{
-            buttonPrev: () => null,
-            buttonNext: () => null,
-          }}
-          controller={{ closeOnBackdropClick: true }}
-        />
+        <ImageLightbox
+        open={isLightboxOpen}
+        onClose={() => setIsLightboxOpen(false)}
+        images={imageAttachments.map(att => att.url)}
+        currentIndex={currentImageIndex}
+      />
       )}
 
       {/* Lightbox for video attachments */}
       {videoAttachments.length > 0 && (
-        <Lightbox
-          open={isVideoLightboxOpen}
-          close={() => setIsVideoLightboxOpen(false)}
-          slides={videoAttachments.map(att => ({ src: att.url }))}
-          index={currentVideoIndex}
-          render={{
-            slide: ({ slide }) => (
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                width: '100%',
-                height: '100%',
-                padding: '20px'
-              }}>
-                <video
-                  controls
-                  autoPlay
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: '100%',
-                    width: 'auto',
-                    height: 'auto',
-                    borderRadius: '10px',
-                    outline: 'none'
-                  }}
-                >
-                  <source src={slide.src} type="video/mp4" />
-                  Your browser does not support the video tag.
-                </video>
-              </div>
-            ),
-            buttonPrev: () => null,
-            buttonNext: () => null,
-          }}
-          controller={{ closeOnBackdropClick: true }}
-        />
+         <VideoLightbox
+         open={isVideoLightboxOpen}
+         onClose={() => setIsVideoLightboxOpen(false)}
+         videos={videoAttachments.map(att => att.url)}
+         currentIndex={currentVideoIndex}
+       />
       )}
 
       {/* Lightbox for avatar */}
       {comment.avatarUrl && comment.avatarUrl !== "./user-icon.png" && (
-        <Lightbox
-          open={isAvatarLightboxOpen}
-          close={() => setIsAvatarLightboxOpen(false)}
-          slides={[{ src: comment.avatarUrl }]}
-          render={{
-            buttonPrev: () => null,
-            buttonNext: () => null,
-          }}
-          controller={{ closeOnBackdropClick: true }}
-        />
+        <AvatarLightboxComment
+        open={isAvatarLightboxOpen}
+        onClose={() => setIsAvatarLightboxOpen(false)}
+        avatarUrl={comment.avatarUrl}
+      />
       )}
 
       {/* Confirm Dialog for attachment deletion - только для автора */}

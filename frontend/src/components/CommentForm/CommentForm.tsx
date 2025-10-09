@@ -1,24 +1,52 @@
 import React, { useState, useRef } from "react";
-import { Image, Video, Paperclip, Send, X } from "lucide-react";
+import { 
+  Image, 
+  Video, 
+  Paperclip, 
+  Send, 
+  X, 
+  File, 
+  FileText, 
+  Download, 
+  FileCode,
+  FileSpreadsheet,
+  FileImage,
+  FileArchive,
+  FileAudio,
+  FileVideo,
+  FileSignature,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import "./CommentForm.css";
+import { ImageLightbox } from "../Lightbox/ImageLightbox";
+import { VideoLightbox } from "../Lightbox/VideoLightbox";
 
 interface CommentsFormProps {
-  handleSubmit: (text: string, imageFile?: File, videoFile?: File) => void;
+  handleSubmit: (text: string, imageFile?: File, videoFile?: File, attachmentFile?: File) => void;
   submitLabel?: string;
   hasCancelButton?: boolean;
   initialText?: string | null;
   handleCancel?: () => void;
   existingImageUrl?: string;
   existingVideoUrl?: string;
+  existingAttachmentUrl?: string;
   onSuccess?: () => void;
 }
 
-const MAX_CHARACTERS = 500;
+const MAX_CHARACTERS = 250;
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_ATTACHMENT_SIZE = 100 * 1024; // 100KB
 const SUPPORTED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg'];
+const SUPPORTED_ATTACHMENT_TYPES = [
+  'text/plain',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+];
 
 export const CommentForm: React.FC<CommentsFormProps> = ({
   handleSubmit,
@@ -27,22 +55,26 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
   handleCancel,
   existingImageUrl,
   existingVideoUrl,
+  existingAttachmentUrl,
   onSuccess 
 }) => {
   const [text, setText] = useState(initialText || "");
   const [charCount, setCharCount] = useState((initialText?.length || 0));
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [videoLightboxOpen, setVideoLightboxOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
   
   const isNearLimit = charCount > MAX_CHARACTERS * 0.8;
   const isOverLimit = charCount > MAX_CHARACTERS;
-  const hasContent = (text?.trim().length || 0) > 0 || imageFile || videoFile || existingImageUrl || existingVideoUrl;
+  const hasContent = (text?.trim().length || 0) > 0 || imageFile || videoFile || attachmentFile || existingImageUrl || existingVideoUrl || existingAttachmentUrl;
   const isSubmitDisabled = !hasContent || isOverLimit;
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -100,6 +132,28 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
     }
     
     return true;
+  };
+
+  const validateAttachment = (file: File): boolean => {
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      toast.error(`File size must be less than ${MAX_ATTACHMENT_SIZE / 1024}KB`);
+      return false;
+    }
+    
+    if (!SUPPORTED_ATTACHMENT_TYPES.includes(file.type)) {
+      toast.error("Please select a supported file format (TXT, PDF, DOC, DOCX, XLS, XLSX)");
+      return false;
+    }
+    
+    return true;
+  };
+
+  const openVideoLightbox = () => {
+    setVideoLightboxOpen(true);
+  };
+  
+  const closeVideoLightbox = () => {
+    setVideoLightboxOpen(false);
   };
 
   const isSameFile = async (newFile: File, existingUrl: string): Promise<boolean> => {
@@ -222,6 +276,31 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
     }
   };
 
+  const handleAttachmentSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!validateAttachment(file)) {
+      return;
+    }
+
+    try {
+      if (existingAttachmentUrl) {
+        const isDuplicate = await isSameFile(file, existingAttachmentUrl);
+        if (isDuplicate) {
+          toast.error("This is the same file already attached to the comment");
+          return;
+        }
+      }
+
+      setAttachmentFile(file);
+      setAttachmentPreview(URL.createObjectURL(new Blob([`File: ${file.name}\nSize: ${(file.size / 1024).toFixed(2)}KB`], { type: 'text/plain' })));
+    } catch (error) {
+      console.error('Error in handleAttachmentSelect:', error);
+      toast.error("Error processing file");
+    }
+  };
+
   const removeImage = () => {
     setImageFile(null);
     setImagePreview(null);
@@ -238,12 +317,24 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
     }
   };
 
+  const removeAttachment = () => {
+    setAttachmentFile(null);
+    setAttachmentPreview(null);
+    if (attachmentInputRef.current) {
+      attachmentInputRef.current.value = "";
+    }
+  };
+
   const triggerImageInput = () => {
     imageInputRef.current?.click();
   };
 
   const triggerVideoInput = () => {
     videoInputRef.current?.click();
+  };
+
+  const triggerAttachmentInput = () => {
+    attachmentInputRef.current?.click();
   };
 
   const openLightbox = () => {
@@ -254,12 +345,38 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
     setLightboxOpen(false);
   };
 
-  const openVideoLightbox = () => {
-    setVideoLightboxOpen(true);
-  };
-
-  const closeVideoLightbox = () => {
-    setVideoLightboxOpen(false);
+  const getFileIcon = (fileName: string) => {
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    switch (ext) {
+      case 'pdf':
+        return <FileText size={24} color="#ff4444" />;
+      case 'doc':
+      case 'docx':
+        return <FileCode size={24} color="#2b579a" />;
+      case 'xls':
+      case 'xlsx':
+        return <FileSpreadsheet size={24} color="#217346" />;
+      case 'txt':
+        return <FileSignature size={24} color="#666" />;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+        return <FileImage size={24} color="#ff6b6b" />;
+      case 'mp4':
+      case 'webm':
+      case 'ogg':
+        return <FileVideo size={24} color="#ff9900" />;
+      case 'mp3':
+      case 'wav':
+        return <FileAudio size={24} color="#0099ff" />;
+      case 'zip':
+      case 'rar':
+      case '7z':
+        return <FileArchive size={24} color="#ffcc00" />;
+      default:
+        return <File size={24} color="#666" />;
+    }
   };
 
   const onSubmit = async (event: React.FormEvent) => {
@@ -270,15 +387,15 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
       return;
     }
     
-    const hasContent = (text?.trim().length || 0) > 0 || imageFile || videoFile || existingImageUrl || existingVideoUrl;
+    const hasContent = (text?.trim().length || 0) > 0 || imageFile || videoFile || attachmentFile || existingImageUrl || existingVideoUrl || existingAttachmentUrl;
     
     if (!hasContent) {
-      toast.error("Comment must have either text, image or video");
+      toast.error("Comment must have either text, image, video or file");
       return;
     }
     
     try {
-      await handleSubmit(text?.trim() || "", imageFile || undefined, videoFile || undefined);
+      await handleSubmit(text?.trim() || "", imageFile || undefined, videoFile || undefined, attachmentFile || undefined);
       
       if (onSuccess) {
         onSuccess();
@@ -287,6 +404,7 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
         setCharCount(0);
         removeImage();
         removeVideo();
+        removeAttachment();
       }
     } catch (error) {
       console.error('Error in onSubmit:', error);
@@ -297,7 +415,7 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       if (!isSubmitDisabled && !isOverLimit) {
-        handleSubmit(text?.trim() || "", imageFile || undefined, videoFile || undefined);
+        handleSubmit(text?.trim() || "", imageFile || undefined, videoFile || undefined, attachmentFile || undefined);
         
         if (onSuccess) {
           onSuccess();
@@ -306,6 +424,7 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
           setCharCount(0);
           removeImage();
           removeVideo();
+          removeAttachment();
         }
       }
     }
@@ -351,9 +470,16 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
           accept="video/*"
           style={{ display: 'none' }}
         />
+        <input
+          type="file"
+          ref={attachmentInputRef}
+          onChange={handleAttachmentSelect}
+          accept=".txt,.pdf,.doc,.docx,.xls,.xlsx"
+          style={{ display: 'none' }}
+        />
   
-        {/* Preview container for both image and video */}
-        {(imagePreview || videoPreview) && (
+        {/* Preview container for all attachments */}
+        {(imagePreview || videoPreview || attachmentPreview) && (
           <div className="attachment-preview-container">
             {/* Image Preview */}
             {imagePreview && (
@@ -400,8 +526,44 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
                 </button>
               </div>
             )}
-          </div>
-        )}
+
+            {/* Attachment Preview */}
+            {attachmentPreview && attachmentFile && (
+              <div className="attachment-preview">
+                <div className="file-preview-wrapper" onClick={() => {
+                  const url = URL.createObjectURL(attachmentFile);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = attachmentFile.name;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(url);
+                }}>
+                  <div className="file-preview">
+                    <div className="file-icon">
+                      {getFileIcon(attachmentFile.name)}
+                    </div>
+                    <div className="file-info">
+                      <div className="file-name">{attachmentFile.name}</div>
+                      <div className="file-size">{(attachmentFile.size / 1024).toFixed(2)} KB</div>
+                    </div>
+                    <div className="file-download">
+                      <Download size={16} />
+                    </div>
+                  </div>
+                </div>
+                <button 
+                  type="button" 
+                  className="remove-attachment-button"
+                  onClick={removeAttachment}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+            </div>
+          )}
   
         <div className="comment-form-footer">
           <div className="comment-icons">
@@ -419,7 +581,11 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
             >
               <Video size={18} />
             </button>
-            <button type="button" className="comment-icon-button">
+            <button 
+              type="button" 
+              className="comment-icon-button"
+              onClick={triggerAttachmentInput}
+            >
               <Paperclip size={18} />
             </button>
           </div>
@@ -438,57 +604,21 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
   
       {/* Lightbox for Image */}
       {imagePreview && (
-        <Lightbox
+        <ImageLightbox
           open={lightboxOpen}
-          close={closeLightbox}
-          slides={[{ src: imagePreview }]}
-          render={{
-            buttonPrev: () => null,
-            buttonNext: () => null,
-          }}
-          controller={{ closeOnBackdropClick: true }}
+          onClose={closeLightbox}
+          images={[imagePreview]}
         />
       )}
 
       {/* Lightbox for Video */}
       {videoPreview && (
-        <Lightbox
-          open={videoLightboxOpen}
-          close={closeVideoLightbox}
-          slides={[{ src: videoPreview }]}
-          render={{
-            slide: ({ slide }) => (
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                width: '100%',
-                height: '100%',
-                padding: '20px'
-              }}>
-                <video
-                  controls
-                  autoPlay
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: '100%',
-                    width: 'auto',
-                    height: 'auto',
-                    borderRadius: '10px',
-                    outline: 'none'
-                  }}
-                >
-                  <source src={slide.src} type="video/mp4" />
-                  Your browser does not support the video tag.
-                </video>
-              </div>
-            ),
-            buttonPrev: () => null,
-            buttonNext: () => null,
-          }}
-          controller={{ closeOnBackdropClick: true }}
-        />
-      )}
+      <VideoLightbox
+        open={videoLightboxOpen}
+        onClose={closeVideoLightbox}
+        videos={[videoPreview]}
+      />
+    )}
     </>
   );
-}
+};

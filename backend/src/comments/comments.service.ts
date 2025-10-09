@@ -37,84 +37,102 @@ export default class CommentsService {
   }
 
   private async processFiles(files?: 
-                              { images?: Express.Multer.File[], 
-                                video?: Express.Multer.File[], 
-                                attachment?: Express.Multer.File[] }): 
-                              Promise<Attachment[]> {
+    { images?: Express.Multer.File[], 
+      video?: Express.Multer.File[], 
+      attachment?: Express.Multer.File[] }): 
+    Promise<Attachment[]> {
 
-    const attachments: Attachment[] = [];
+      const attachments: Attachment[] = [];
 
-    if (files?.images && files.images.length > 0) {
-      for (const image of files.images) {
-        if (!['image/jpeg', 'image/gif', 'image/png'].includes(image.mimetype)) {
-          throw new HttpException(`Something went wrong: ${image.mimetype}`, HttpStatus.BAD_REQUEST);
+      if (files?.images && files.images.length > 0) {
+        for (const image of files.images) {
+          if (!['image/jpeg', 'image/gif', 'image/png'].includes(image.mimetype)) {
+            throw new HttpException(`Something went wrong: ${image.mimetype}`, HttpStatus.BAD_REQUEST);
+          }
+
+      const result = await this.uploadToCloudinary(image, 'image');
+        attachments.push({ 
+                            type: 'image', 
+                            url: result.secure_url,
+                            originalName: image.originalname
+                          });
+          }
         }
 
-        const result = await this.uploadToCloudinary(image, 'image');
-        attachments.push({ type: 'image', url: result.secure_url });
-      }
-    }
+      if (files?.video && files.video.length > 0) {
+        const video = files.video[0];
+          if (!video.mimetype.startsWith('video/')) {
+            throw new HttpException(`Something went wrong: ${video.mimetype}`, HttpStatus.BAD_REQUEST);
+          }
 
-    if (files?.video && files.video.length > 0) {
-      const video = files.video[0];
-      if (!video.mimetype.startsWith('video/')) {
-        throw new HttpException(`Something went wrong: ${video.mimetype}`, HttpStatus.BAD_REQUEST);
-      }
-      const result = await this.uploadToCloudinary(video, 'video');
-      attachments.push({ type: 'video', url: result.secure_url });
-    }
+          const result = await this.uploadToCloudinary(video, 'video');
+            attachments.push({ 
+                                type: 'video', 
+                                url: result.secure_url,
+                                originalName: video.originalname 
+                              });
+          }
 
-    if (files?.attachment && files.attachment.length > 0) {
-      const attachmentFile = files.attachment[0];
-      const allowedMimetypes = [
-        'text/plain',
-        'application/octet-stream',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/msword',
-        'application/pdf',
-        'application/vnd.ms-excel'
-      ];
-      if (!allowedMimetypes.includes(attachmentFile.mimetype)) {
-        throw new HttpException(`Something went wrong: ${attachmentFile.mimetype}`, HttpStatus.BAD_REQUEST);
-      }
-      if (attachmentFile.size > 100 * 1024) {
-        throw new HttpException('The file size is 100 KB', HttpStatus.BAD_REQUEST);
-      }
-      try {
-        const result = await this.uploadToCloudinary(attachmentFile, 'raw');
-        attachments.push({ type: 'attachment', url: result.secure_url });
-      } catch (error) {
-        console.error('Error uploading attachment to Cloudinary:', error);
-        throw new HttpException(`Something went wrong: ${error.message}`, HttpStatus.BAD_REQUEST);
-      }
-    }
+      if (files?.attachment && files.attachment.length > 0) {
+          const attachmentFile = files.attachment[0];
+          const allowedMimetypes = [
+            'text/plain',
+            'application/octet-stream',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/msword',
+            'application/pdf',
+            'application/vnd.ms-excel'
+          ];
 
-    return attachments;
-  }
+          if (!allowedMimetypes.includes(attachmentFile.mimetype)) {
+              throw new HttpException(`Something went wrong: ${attachmentFile.mimetype}`, HttpStatus.BAD_REQUEST);
+            }
+
+            if (attachmentFile.size > 100 * 1024) {
+                throw new HttpException('The file size is 100 KB', HttpStatus.BAD_REQUEST);
+            }
+            
+            try {
+              const result = await this.uploadToCloudinary(attachmentFile, 'raw');
+              attachments.push({ 
+                                  type: 'attachment', 
+                                  url: result.secure_url,
+                                  originalName: attachmentFile.originalname 
+                              });
+            } catch (error) {
+              console.error('Error uploading attachment to Cloudinary:', error);
+              throw new HttpException(`Something went wrong: ${error.message}`, HttpStatus.BAD_REQUEST);
+            }
+          }
+
+          return attachments;
+        }
 
   async getAllComments(): Promise<CommentResponse[]> {
     const comments = await this.commentRepository.find({ 
-      relations: ['user', 'children'] 
-    });
+                                                          relations: ['user', 'children'] 
+                                                      });
+    
     return comments.map(comment => ({
-      ...comment,
-      createdAt: comment.createdAt.toLocaleString('uk-UA', { hour12: false }),
-    }));
-  }
+                                      ...comment,
+                                      createdAt: comment.createdAt.toLocaleString('uk-UA', { hour12: false }),
+                                    }));
+                        }
 
-  async getCommentById(id: string): Promise<CommentResponse> {
-    const comment = await this.commentRepository.findOne({ 
-      where: { id },
-      relations: ['user', 'children']
-    });
-    if (!comment) {
-      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
-    }
-    return {
-      ...comment,
-      createdAt: comment.createdAt.toLocaleString('uk-UA', { hour12: false }),
-    };
-  }
+    async getCommentById(id: string): Promise<CommentResponse> {
+          const comment = await this.commentRepository.findOne({ 
+                                                                  where: { id },
+                                                                  relations: ['user', 'children']
+                                                              });
+      if (!comment) {
+        throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
+      }
+    
+        return {
+                  ...comment,
+                  createdAt: comment.createdAt.toLocaleString('uk-UA', { hour12: false }),
+                };
+        }
 
   async createComment(commentDto: CreateCommentDto, 
                       userId: string, 

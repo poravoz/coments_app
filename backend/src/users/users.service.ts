@@ -15,17 +15,20 @@ export class UsersService {
     private usersRepository: Repository<UserEntity>,
   ) {}
 
-  private async uploadToCloudinary(file: Express.Multer.File): Promise<{ secure_url: string }> {
-    if (!file.buffer || file.buffer.length === 0) {
-      throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
-    }
+  private async uploadToCloudinary(file: Express.Multer.File, resource_type: 'image' | 'video' | 'raw'): Promise<{ secure_url: string }> {
     return new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
-        { resource_type: 'image' },
+        { 
+          resource_type,
+          public_id: file.originalname.replace(/\.[^/.]+$/, ""),
+          use_filename: true,
+          unique_filename: false,
+          overwrite: true
+        },
         (error: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
           if (error || !result) {
             console.error('Cloudinary upload error:', error);
-            return reject(new HttpException('Something went wrong', HttpStatus.INTERNAL_SERVER_ERROR));
+            return reject(error || new Error('Upload to Cloudinary failed'));
           }
           resolve({ secure_url: result.secure_url });
         }
@@ -86,8 +89,9 @@ export class UsersService {
     if (users.length === 0) {
       throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
     }
-    const user = users[0];
-    const result = await this.uploadToCloudinary(file);
+        
+    const result = await this.uploadToCloudinary(file, 'image');
+    
     await this.usersRepository.update(userId, { avatarUrl: result.secure_url });
     const updatedUser = (await this.getUserById(userId))[0];
     if (!updatedUser) {

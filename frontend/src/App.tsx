@@ -7,7 +7,7 @@ import { Loader } from "lucide-react";
 import {Toaster} from "react-hot-toast"
 import "./App.css";
 import { NavBar } from "./components/NavBar/NavBar";
-import { Comments } from "./components/Comments/Comments";
+import { HomePage } from "./pages/HomePage/HomePage";
 
 function App() {
   const { authUser, checkAuth, isCheckingAuth } = useAuthStore();
@@ -31,7 +31,7 @@ function App() {
       <NavBar />
 
       <Routes>
-        <Route path="/" element={authUser ? <Comments  /> : <Navigate to="/login" />} />
+        <Route path="/" element={authUser ? <HomePage /> : <Navigate to="/login" />} />
         <Route path="/register" element={!authUser ? <SignUpPage /> : <Navigate to="/" />} />
         <Route path="/login" element={!authUser ? <SignInPage /> : <Navigate to="/" />} />
         <Route path="*" element={<Navigate to={authUser ? "/" : "/login"} />} />

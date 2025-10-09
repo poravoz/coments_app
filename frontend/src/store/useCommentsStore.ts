@@ -15,6 +15,7 @@ interface RawComment {
   attachments?: Array<{
     type: 'image' | 'video' | 'attachment';
     url: string;
+    originalName?: string;
   }>;
 }
 
@@ -30,8 +31,8 @@ interface CommentsStore {
   comments: CommentType[];
   users: UserType[];
   getComments: () => Promise<void>;
-  createComment: (text: string, parentId?: string | null, imageFile?: File, videoFile?: File) => Promise<CommentType>;
-  updateComment: (id: string, text: string, imageFile?: File, videoFile?: File) => Promise<CommentType>;
+  createComment: (text: string, parentId?: string | null, imageFile?: File, videoFile?: File, attachmentFile?: File) => Promise<CommentType>;
+  updateComment: (id: string, text: string, imageFile?: File, videoFile?: File, attachmentFile?: File) => Promise<CommentType>;
   removeAttachment: (commentId: string, attachmentIndex: number) => Promise<void>;
   deleteComment: (id: string) => Promise<void>;
   getUsers: () => Promise<void>;
@@ -45,7 +46,11 @@ const transformComment = (rawComment: RawComment): CommentType => ({
   parentId: rawComment.parentId,
   createdAt: rawComment.createdAt,
   avatarUrl: (rawComment.user as any).avatarUrl || "./user-icon.png",
-  attachments: rawComment.attachments || [],
+  attachments: rawComment.attachments?.map(att => ({
+    type: att.type,
+    url: att.url,
+    originalName: att.originalName
+  })) || [],
 });
 
 const transformUser = (apiUser: UserType): UserType => apiUser;
@@ -66,7 +71,11 @@ export const useCommentsStore = create<CommentsStore>((set, get) => ({
       set({ isCommentsLoading: false });
     }
   },
-  createComment: async (text: string, parentId?: string | null, imageFile?: File, videoFile?: File) => {
+  createComment: async (text: string, 
+                        parentId?: string | null, 
+                        imageFile?: File, 
+                        videoFile?: File, 
+                        attachmentFile?: File) => {
     try {
       const formData = new FormData();
       
@@ -77,11 +86,15 @@ export const useCommentsStore = create<CommentsStore>((set, get) => ({
       if (imageFile) {
         formData.append('images', imageFile);
       }
-
+  
       if (videoFile) {
         formData.append('video', videoFile);
       }
-
+  
+      if (attachmentFile) {
+        formData.append('attachment', attachmentFile);
+      }
+  
       let res;
       if (parentId) {
         res = await axiosInstance.post(`/comments/${parentId}/replies`, formData, {
@@ -106,7 +119,11 @@ export const useCommentsStore = create<CommentsStore>((set, get) => ({
     }
   },
 
-  updateComment: async (id: string, text: string, imageFile?: File, videoFile?: File) => {
+  updateComment: async (id: string, 
+                        text: string, 
+                        imageFile?: File, 
+                        videoFile?: File, 
+                        attachmentFile?: File) => {
     try {
       const formData = new FormData();      
       formData.append('comment', text || '');
@@ -114,11 +131,15 @@ export const useCommentsStore = create<CommentsStore>((set, get) => ({
       if (imageFile) {
         formData.append('images', imageFile);
       }
-
+  
       if (videoFile) {
         formData.append('video', videoFile);
       }
   
+      if (attachmentFile) {
+        formData.append('attachment', attachmentFile);
+      }
+    
       const res = await axiosInstance.patch(`/comments/${id}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',

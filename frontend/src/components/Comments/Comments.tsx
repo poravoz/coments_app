@@ -26,16 +26,16 @@ export const Comments = () =>  {
     getComments();
   }, []);
 
-  const addComment = (text: string, imageFile?: File, videoFile?: File, parentId: string | null = null, callback?: () => void) => {
-    createComment(text, parentId, imageFile, videoFile).then((newComment) => {
+  const addComment = (text: string, imageFile?: File, videoFile?: File, attachmentFile?: File, parentId: string | null = null, callback?: () => void) => {
+    createComment(text, parentId, imageFile, videoFile, attachmentFile).then((newComment) => {
       if (callback) callback();
     }).catch((error) => {
       console.error("Add comment failed:", error);
     });
   };
 
-  const updateCommentHandler = (text: string, commentId: string, imageFile?: File, videoFile?: File) => {
-    updateComment(commentId, text, imageFile, videoFile).then(() => {
+  const updateCommentHandler = (text: string, commentId: string, imageFile?: File, videoFile?: File, attachmentFile?: File) => {
+    updateComment(commentId, text, imageFile, videoFile, attachmentFile).then(() => {
       setActiveComment(null);
     }).catch((error) => {
       console.error("Update comment failed:", error);

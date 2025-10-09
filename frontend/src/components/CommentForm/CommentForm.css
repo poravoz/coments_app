@@ -238,3 +238,84 @@
   border-radius: 8px;
   outline: none;
 }
+
+
+.file-preview-wrapper {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+}
+
+.file-preview {
+  width: 120px;
+  height: 90px;
+  border-radius: 6px;
+  border: 1px solid #333;
+  background: #2a2a2a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  color: #e0e0e0;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.file-preview:hover {
+  transform: scale(1.05);
+  background: #333;
+  border-color: #3b82f6;
+}
+
+.file-icon {
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.file-info {
+  text-align: center;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.file-name {
+  font-size: 11px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  word-break: break-all;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-type {
+  font-size: 10px;
+  color: #888;
+}
+
+.file-download {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  background: rgba(59, 130, 246, 0.9);
+  border-radius: 4px;
+  padding: 4px;
+  color: white;
+}
+
+.file-preview:hover .file-download {
+  opacity: 1;
+}
+
+.file-size {
+  font-size: 10px;
+  color: #888;
+}
