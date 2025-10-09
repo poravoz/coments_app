@@ -13,22 +13,29 @@ export const Comments = () =>  {
   const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const commentsPerPage = 25;
-  const { comments: storeComments, getComments, createComment, updateComment, deleteComment, removeImage } = useCommentsStore();
+  const { 
+    comments: storeComments, 
+    getComments, 
+    createComment, 
+    updateComment, 
+    deleteComment, 
+    removeAttachment 
+  } = useCommentsStore();
 
   useEffect(() => {
     getComments();
   }, []);
 
-  const addComment = (text: string, imageFile?: File, parentId: string | null = null, callback?: () => void) => {
-    createComment(text, parentId, imageFile).then((newComment) => {
+  const addComment = (text: string, imageFile?: File, videoFile?: File, parentId: string | null = null, callback?: () => void) => {
+    createComment(text, parentId, imageFile, videoFile).then((newComment) => {
       if (callback) callback();
     }).catch((error) => {
       console.error("Add comment failed:", error);
     });
   };
 
-  const updateCommentHandler = (text: string, commentId: string, imageFile?: File) => {
-    updateComment(commentId, text, imageFile).then(() => {
+  const updateCommentHandler = (text: string, commentId: string, imageFile?: File, videoFile?: File) => {
+    updateComment(commentId, text, imageFile, videoFile).then(() => {
       setActiveComment(null);
     }).catch((error) => {
       console.error("Update comment failed:", error);
@@ -113,7 +120,7 @@ export const Comments = () =>  {
         deleteComment={() => openDeleteDialog(comment.id)}
         addComment={addComment}
         updateComment={updateCommentHandler}
-        removeImage={removeImage}
+        removeAttachment={removeAttachment}
         depth={depth}
       />
     ));
@@ -158,7 +165,7 @@ export const Comments = () =>  {
               deleteComment={() => openDeleteDialog(root.id)}
               addComment={addComment}
               updateComment={updateCommentHandler}
-              removeImage={removeImage}
+              removeAttachment={removeAttachment}
               depth={0}
             />
           ))

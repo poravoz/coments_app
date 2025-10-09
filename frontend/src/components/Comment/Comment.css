@@ -67,7 +67,7 @@
 .comment-text { 
   color: #e0e0e0; 
   font-size: 14px; 
-  margin-bottom: 8px; 
+  margin-bottom: -5px; 
   word-break: break-word;   
   max-width: 60%;          
 }
@@ -79,23 +79,106 @@
   max-width: 60%;
 }
 
-.comment-images {
+.comment-attachments-container {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   margin-top: 8px;
   flex-wrap: wrap;
 }
 
-.comment-image-attachment {
-  border-radius: 8px;
-  overflow: visible;
-  margin-bottom: 10px;
+.comment-attachment {
   position: relative;
   display: inline-block;
 }
 
-.remove-image-button:hover {
+.preview-media {
+  width: 120px;
+  height: 90px;
+  border-radius: 6px;
+  border: 1px solid #333;
+  object-fit: cover;
+  transition: transform 0.2s ease;
+}
+
+.preview-media:hover { 
+  transform: scale(1.05);
+}
+
+.remove-attachment-button {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ef4444;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  opacity: 0.9;
+  transition: opacity 0.2s;
+  z-index: 10;
+}
+
+.remove-attachment-button:hover {
   opacity: 1;
+  transform: scale(1.1);
+}
+
+.video-preview-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.video-preview {
+  width: 120px;
+  height: 90px;
+  border-radius: 6px;
+  border: 1px solid #333;
+  object-fit: cover;
+}
+
+.video-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 3px;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+  opacity: 0;
+}
+
+.video-overlay:hover {
+  background: rgba(0, 0, 0, 0.7);
+  opacity: 1;
+}
+
+.play-button {
+  width: 32px;
+  height: 32px;
+  background: rgba(59, 130, 246, 0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+}
+
+.video-overlay:hover .play-button {
+  transform: scale(1.1);
+}
+
+.play-button svg {
+  margin-left: 2px;
 }
 
 .comment-actions {
@@ -272,5 +355,14 @@
     width: 35px;
     height: 35px;
     font-size: 18px;
+  }
+
+  .comment-attachments-container {
+    gap: 14px;
+  }
+
+  .preview-media {
+    width: 100px;
+    height: 75px;
   }
 }

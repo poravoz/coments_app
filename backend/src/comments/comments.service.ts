@@ -8,7 +8,7 @@ import { UsersService } from 'src/users/users.service';
 import cloudinary from '../database/cloudinary';
 import { UploadApiResponse, UploadApiErrorResponse } from 'cloudinary';
 import { CommentResponse } from './interface/comment-response.dto';
-import { CreateReplyDto } from './dto/createReplyCommentDto';
+import { CreateReplyDto } from './dto/createReplyComment.dto';
 import { Attachment } from './interface/attachment.dto';
 
 
@@ -173,59 +173,81 @@ export default class CommentsService {
   }
 
   async updateComment(id: string, 
-                      updateDto: UpdateCommentDto, 
-                      userId: string, files?: 
-                                              { 
-                                                images?: Express.Multer.File[], 
-                                                video?: Express.Multer.File[], 
-                                                attachment?: Express.Multer.File[] }): 
-                                              Promise<CommentEntity> {
+    updateDto: UpdateCommentDto, 
+    userId: string, 
+    files?: { 
+      images?: Express.Multer.File[], 
+      video?: Express.Multer.File[], 
+      attachment?: Express.Multer.File[] }): 
+    Promise<CommentEntity> {
 
     const comment = await this.commentRepository.findOne({ 
-      where: { id },
-      relations: ['user']
-    });
-    if (!comment) {
-      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
+                                                            where: { id },
+                                                            relations: ['user']
+                                                          });
+      if (!comment) {
+        throw new HttpException('Comment not found', HttpStatus.NOT_FOUND);
+      }
+    
+      if (comment.user.id !== userId) {
+        throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
+      }
+
+      const updateData: Partial<CommentEntity> = {};
+
+      if (updateDto.comment !== undefined) {
+        updateData.comment = updateDto.comment;
+      }
+
+    let updatedAttachments = comment.attachments || [];
+
+    if (updateDto.removeAttachments && updateDto.removeAttachments.length > 0) {
+      updatedAttachments = updatedAttachments.filter(att => 
+      !updateDto.removeAttachments!.some(removeAtt => 
+      removeAtt.url === att.url && removeAtt.type === att.type
+      )
+    );
+  }
+
+    if (updateDto.clearAttachments) {
+      updatedAttachments = [];
     }
-    if (comment.user.id !== userId) {
-      throw new HttpException('Something went wrong', HttpStatus.FORBIDDEN);
-    }
-  
-    const updateData: Partial<CommentEntity> = {};
-  
-    if (updateDto.comment !== undefined) {
-      updateData.comment = updateDto.comment;
-    }
-  
+
     const hasFiles = files && (
       (files.images && files.images.length > 0) ||
       (files.video && files.video.length > 0) ||
       (files.attachment && files.attachment.length > 0)
     );
-  
+
     if (hasFiles) {
-      const newAttachments = await this.processFiles(files);
-      updateData.attachments = newAttachments.length > 0 ? newAttachments : null;
-    } else if (updateDto.clearAttachments) {
-      updateData.attachments = null;
-    }
-  
-    if (Object.keys(updateData).length > 0) {
-      await this.commentRepository.update(id, updateData);
-    }
-  
-    const updatedComment = await this.commentRepository.findOne({ 
-      where: { id },
-      relations: ['user']
+        const newAttachments = await this.processFiles(files);
+
+        newAttachments.forEach(newAtt => {
+        updatedAttachments = updatedAttachments.filter(existingAtt => 
+        existingAtt.type !== newAtt.type
+      );
     });
-    
-    if (!updatedComment) {
-      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
+
+      updatedAttachments = [...updatedAttachments, ...newAttachments];
     }
-  
-    return updatedComment;
-  }
+
+      updateData.attachments = updatedAttachments.length > 0 ? updatedAttachments : null;
+
+      if (Object.keys(updateData).length > 0) {
+        await this.commentRepository.update(id, updateData);
+      }
+
+    const updatedComment = await this.commentRepository.findOne({ 
+                                                                  where: { id },
+                                                                  relations: ['user']
+                                                                });
+
+      if (!updatedComment) {
+        throw new HttpException('Comment not found', HttpStatus.NOT_FOUND);
+      }
+
+      return updatedComment;
+    }
 
   async deleteComment(id: string): Promise<CommentEntity> {
     const comment = await this.commentRepository.findOne({ 

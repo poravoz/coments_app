@@ -30,9 +30,9 @@ interface CommentsStore {
   comments: CommentType[];
   users: UserType[];
   getComments: () => Promise<void>;
-  createComment: (text: string, parentId?: string | null, imageFile?: File) => Promise<CommentType>;
-  updateComment: (id: string, text: string, imageFile?: File) => Promise<CommentType>;
-  removeImage: (id: string) => Promise<void>;
+  createComment: (text: string, parentId?: string | null, imageFile?: File, videoFile?: File) => Promise<CommentType>;
+  updateComment: (id: string, text: string, imageFile?: File, videoFile?: File) => Promise<CommentType>;
+  removeAttachment: (commentId: string, attachmentIndex: number) => Promise<void>;
   deleteComment: (id: string) => Promise<void>;
   getUsers: () => Promise<void>;
 }
@@ -66,7 +66,7 @@ export const useCommentsStore = create<CommentsStore>((set, get) => ({
       set({ isCommentsLoading: false });
     }
   },
-  createComment: async (text: string, parentId?: string | null, imageFile?: File) => {
+  createComment: async (text: string, parentId?: string | null, imageFile?: File, videoFile?: File) => {
     try {
       const formData = new FormData();
       
@@ -76,6 +76,10 @@ export const useCommentsStore = create<CommentsStore>((set, get) => ({
       
       if (imageFile) {
         formData.append('images', imageFile);
+      }
+
+      if (videoFile) {
+        formData.append('video', videoFile);
       }
 
       let res;
@@ -102,9 +106,7 @@ export const useCommentsStore = create<CommentsStore>((set, get) => ({
     }
   },
 
-  updateComment: async (id: string, text: string, imageFile?: File) => {
-
-    
+  updateComment: async (id: string, text: string, imageFile?: File, videoFile?: File) => {
     try {
       const formData = new FormData();      
       formData.append('comment', text || '');
@@ -112,13 +114,16 @@ export const useCommentsStore = create<CommentsStore>((set, get) => ({
       if (imageFile) {
         formData.append('images', imageFile);
       }
+
+      if (videoFile) {
+        formData.append('video', videoFile);
+      }
   
       const res = await axiosInstance.patch(`/comments/${id}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
-      
       
       const updatedComment = transformComment(res.data as RawComment);
       
@@ -135,36 +140,43 @@ export const useCommentsStore = create<CommentsStore>((set, get) => ({
     }
   },
 
-removeImage: async (id: string) => {
-  try {
-    const comment = get().comments.find(c => c.id === id);
-    if (!comment) return;
-
-    const hasText = comment.comment && comment.comment.trim().length > 0;
-    
-    if (!hasText) {
-      await axiosInstance.delete(`/comments/${id}`);
-      set((state) => ({
-        comments: state.comments.filter((c) => c.id !== id),
-      }));
-      toast.success("Comment deleted");
-    } else {
-      const res = await axiosInstance.patch(`/comments/${id}`, {
-        comment: comment.comment,
-        clearAttachments: true
-      });
+  removeAttachment: async (commentId: string, attachmentIndex: number) => {
+    try {
+      const comment = get().comments.find(c => c.id === commentId);
+      if (!comment || !comment.attachments) return;
+  
+      const attachmentToRemove = comment.attachments[attachmentIndex];
+      if (!attachmentToRemove) return;
+  
+      const hasText = comment.comment && comment.comment.trim().length > 0;
+      const remainingAttachments = comment.attachments.filter((_, index) => index !== attachmentIndex);
       
-      const updatedComment = transformComment(res.data as RawComment);
-      set((state) => ({
-        comments: state.comments.map((c) => (c.id === id ? updatedComment : c)),
-      }));
-      toast.success("Image removed");
+      if (!hasText && remainingAttachments.length === 0) {
+        await axiosInstance.delete(`/comments/${commentId}`);
+        set((state) => ({
+          comments: state.comments.filter((c) => c.id !== commentId),
+        }));
+        toast.success("Comment deleted");
+      } else {
+        const res = await axiosInstance.patch(`/comments/${commentId}`, {
+          comment: comment.comment,
+          removeAttachments: [{
+            url: attachmentToRemove.url,
+            type: attachmentToRemove.type
+          }]
+        });
+        
+        const updatedComment = transformComment(res.data as RawComment);
+        set((state) => ({
+          comments: state.comments.map((c) => (c.id === commentId ? updatedComment : c)),
+        }));
+        toast.success("Attachment removed");
+      }
+    } catch (error) {
+      toast.error((error as Error)?.message || "Error removing attachment");
+      throw error;
     }
-  } catch (error) {
-    toast.error((error as Error)?.message || "Error removing image");
-    throw error;
-  }
-},
+  },
 
   deleteComment: async (id: string) => {
     try {

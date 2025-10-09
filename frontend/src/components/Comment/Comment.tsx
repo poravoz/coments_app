@@ -16,9 +16,9 @@ interface CommentProps {
   activeComment: ActiveComment | null;
   setActiveComment: React.Dispatch<React.SetStateAction<ActiveComment | null>>;
   deleteComment: () => void;
-  addComment: (text: string, imageFile?: File, parentId?: string | null, callback?: () => void) => void;
-  updateComment: (text: string, commentId: string, imageFile?: File) => void;
-  removeImage: (commentId: string) => void;
+  addComment: (text: string, imageFile?: File, videoFile?: File, parentId?: string | null, callback?: () => void) => void;
+  updateComment: (text: string, commentId: string, imageFile?: File, videoFile?: File) => void;
+  removeAttachment: (commentId: string, attachmentIndex: number) => void;
   depth: number;
 }
 
@@ -44,13 +44,16 @@ export const Comment: React.FC<CommentProps> = ({
   deleteComment,
   addComment,
   updateComment,
-  removeImage,
+  removeAttachment,
   depth,
 }) => {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isVideoLightboxOpen, setIsVideoLightboxOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [isAvatarLightboxOpen, setIsAvatarLightboxOpen] = useState(false);
-  const [imageDeleteDialogOpen, setImageDeleteDialogOpen] = useState(false);
+  const [attachmentDeleteDialogOpen, setAttachmentDeleteDialogOpen] = useState(false);
+  const [attachmentToDelete, setAttachmentToDelete] = useState<{index: number} | null>(null);
   
   const { authUser } = useAuthStore(); 
   
@@ -65,39 +68,48 @@ export const Comment: React.FC<CommentProps> = ({
   const isEditing = activeComment?.type === "editing" && activeComment.id === comment.id;
   const hasActiveForm = isReplying || isEditing;
 
-  const handleSubmitReply = (text: string, imageFile?: File) => {
-    addComment(text, imageFile, comment.id, () => {
+  const handleSubmitReply = (text: string, imageFile?: File, videoFile?: File) => {
+    addComment(text, imageFile, videoFile, comment.id, () => {
       setActiveComment(null);
     });
   };
 
-  const handleSubmitUpdate = (text: string, imageFile?: File) => {
-    const willBeEmpty = !text?.trim() && !imageFile && imageAttachments.length === 0;
+  const handleSubmitUpdate = (text: string, imageFile?: File, videoFile?: File) => {
+    const willBeEmpty = !text?.trim() && !imageFile && !videoFile && attachments.length === 0;
     
     if (willBeEmpty) {
-      toast.error("Comment must have either text or an image");
+      toast.error("Comment must have either text, image or video");
       return;
     }
     
-    updateComment(text, comment.id, imageFile);
+    updateComment(text, comment.id, imageFile, videoFile);
   };
 
-  const handleRemoveImage = () => {
+  const handleRemoveAttachment = (index: number) => {
     if (!isCommentAuthor) {
-      toast.error("You can only remove images from your own comments");
+      toast.error("You can only remove attachments from your own comments");
       return;
     }
-    setImageDeleteDialogOpen(true);
+    setAttachmentToDelete({ index });
+    setAttachmentDeleteDialogOpen(true);
   };
 
-  const confirmRemoveImage = () => {
-    removeImage(comment.id);
-    setImageDeleteDialogOpen(false);
+  const confirmRemoveAttachment = () => {
+    if (!attachmentToDelete) return;
+    
+    removeAttachment(comment.id, attachmentToDelete.index);
+    setAttachmentDeleteDialogOpen(false);
+    setAttachmentToDelete(null);
   };
 
   const openImageLightbox = (index: number) => {
     setCurrentImageIndex(index);
     setIsLightboxOpen(true);
+  };
+
+  const openVideoLightbox = (index: number) => {
+    setCurrentVideoIndex(index);
+    setIsVideoLightboxOpen(true);
   };
 
   const openAvatarLightbox = () => {
@@ -122,7 +134,31 @@ export const Comment: React.FC<CommentProps> = ({
     deleteComment();
   };
 
-  const imageAttachments = comment.attachments?.filter(att => att.type === 'image') || [];
+  const attachments = comment.attachments || [];
+  const imageAttachments = attachments.filter(att => att.type === 'image');
+  const videoAttachments = attachments.filter(att => att.type === 'video');
+  const existingImageUrl = imageAttachments[0]?.url;
+  const existingVideoUrl = videoAttachments[0]?.url;
+
+  const getDeleteMessage = () => {
+    if (!attachmentToDelete) return "";
+    
+    const hasText = comment.comment && comment.comment.trim().length > 0;
+    const hasOtherAttachments = attachments.length > 1;
+    const attachmentToRemove = attachments[attachmentToDelete.index];
+    
+    if (hasText || hasOtherAttachments) {
+      return `Are you sure you want to remove this ${attachmentToRemove?.type}?`;
+    } else {
+      return `Are you sure you want to remove this ${attachmentToRemove?.type}? The comment will be deleted since there is no text or other attachments.`;
+    }
+  };
+
+  const getAttachmentTitle = () => {
+    if (!attachmentToDelete) return "Attachment";
+    const attachment = attachments[attachmentToDelete.index];
+    return attachment?.type === 'image' ? 'Image' : 'Video';
+  };
 
   return (
     <>
@@ -142,28 +178,58 @@ export const Comment: React.FC<CommentProps> = ({
 
             {/* Show content differently when editing vs normal view */}
             {!isEditing ? (
-              /* Normal view - show text and images */
+              /* Normal view - show text and attachments */
               <div className="comment-content">
                 {comment.comment && comment.comment.trim().length > 0 && (
                   <div className="comment-text">{comment.comment}</div>
                 )}
                 
-                {/* Display image attachments */}
-                {imageAttachments.length > 0 && (
-                  <div className="comment-images">
+                {/* Display attachments container */}
+                {(imageAttachments.length > 0 || videoAttachments.length > 0) && (
+                  <div className="comment-attachments-container">
+                    {/* Image attachments */}
                     {imageAttachments.map((attachment, index) => (
-                      <div key={index} className="comment-image-attachment">
+                      <div key={`image-${index}`} className="comment-attachment">
                         <img 
                           src={attachment.url} 
                           alt={`Attachment ${index + 1}`}
-                          className="preview-image"
+                          className="preview-media"
                           onClick={() => openImageLightbox(index)}
                         />
-                        {/* Remove image button - только для автора */}
+                        {/* Remove attachment button - только для автора */}
                         {isCommentAuthor && (
                           <button 
-                            className="remove-image-button"
-                            onClick={handleRemoveImage}
+                            className="remove-attachment-button"
+                            onClick={() => handleRemoveAttachment(attachments.indexOf(attachment))}
+                            type="button"
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Video attachments */}
+                    {videoAttachments.map((attachment, index) => (
+                      <div key={`video-${index}`} className="comment-attachment">
+                        <div className="video-preview-wrapper">
+                          <video 
+                            src={attachment.url} 
+                            className="preview-media video-preview"
+                          />
+                          <div className="video-overlay" onClick={() => openVideoLightbox(index)}>
+                            <div className="play-button">
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                                <path d="M8 5v14l11-7z"/>
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
+                        {/* Remove attachment button - только для автора */}
+                        {isCommentAuthor && (
+                          <button 
+                            className="remove-attachment-button"
+                            onClick={() => handleRemoveAttachment(attachments.indexOf(attachment))}
                             type="button"
                           >
                             <X size={16} />
@@ -175,29 +241,54 @@ export const Comment: React.FC<CommentProps> = ({
                 )}
               </div>
             ) : (
-              /* Editing view - show text, then images, then form */
+              /* Editing view - show text, then attachments, then form */
               <div className="editing-view">
                 {/* Show current text as preview */}
                 {comment.comment && comment.comment.trim().length > 0 && (
                   <div className="comment-text-preview">{comment.comment}</div>
                 )}
                 
-                {/* Show current images above the form */}
-                {imageAttachments.length > 0 && (
-                  <div className="comment-images">
+                {/* Show current attachments above the form */}
+                {(imageAttachments.length > 0 || videoAttachments.length > 0) && (
+                  <div className="comment-attachments-container">
                     {imageAttachments.map((attachment, index) => (
-                      <div key={index} className="comment-image-attachment">
+                      <div key={`image-edit-${index}`} className="comment-attachment">
                         <img 
                           src={attachment.url} 
                           alt={`Current ${index + 1}`}
-                          className="preview-image"
+                          className="preview-media"
                           onClick={() => openImageLightbox(index)}
                         />
-                        {/* Remove image button - только для автора */}
                         {isCommentAuthor && (
                           <button 
-                            className="remove-image-button"
-                            onClick={handleRemoveImage}
+                            className="remove-attachment-button"
+                            onClick={() => handleRemoveAttachment(attachments.indexOf(attachment))}
+                            type="button"
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {videoAttachments.map((attachment, index) => (
+                      <div key={`video-edit-${index}`} className="comment-attachment">
+                        <div className="video-preview-wrapper">
+                          <video 
+                            src={attachment.url} 
+                            className="preview-media video-preview"
+                          />
+                          <div className="video-overlay" onClick={() => openVideoLightbox(index)}>
+                            <div className="play-button">
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                                <path d="M8 5v14l11-7z"/>
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
+                        {isCommentAuthor && (
+                          <button 
+                            className="remove-attachment-button"
+                            onClick={() => handleRemoveAttachment(attachments.indexOf(attachment))}
                             type="button"
                           >
                             <X size={16} />
@@ -216,7 +307,8 @@ export const Comment: React.FC<CommentProps> = ({
                     initialText={comment.comment || ""}
                     handleSubmit={handleSubmitUpdate}
                     handleCancel={() => setActiveComment(null)}
-                    existingImageUrl={imageAttachments[0]?.url}
+                    existingImageUrl={existingImageUrl}
+                    existingVideoUrl={existingVideoUrl}
                     onSuccess={() => setActiveComment(null)}
                   />
                 </div>
@@ -230,7 +322,8 @@ export const Comment: React.FC<CommentProps> = ({
                   handleSubmit={handleSubmitReply}
                   hasCancelButton
                   handleCancel={() => setActiveComment(null)}
-                  existingImageUrl={imageAttachments[0]?.url}
+                  existingImageUrl={existingImageUrl}
+                  existingVideoUrl={existingVideoUrl}
                   onSuccess={() => setActiveComment(null)}
                 />
               </div>
@@ -287,6 +380,47 @@ export const Comment: React.FC<CommentProps> = ({
         />
       )}
 
+      {/* Lightbox for video attachments */}
+      {videoAttachments.length > 0 && (
+        <Lightbox
+          open={isVideoLightboxOpen}
+          close={() => setIsVideoLightboxOpen(false)}
+          slides={videoAttachments.map(att => ({ src: att.url }))}
+          index={currentVideoIndex}
+          render={{
+            slide: ({ slide }) => (
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                width: '100%',
+                height: '100%',
+                padding: '20px'
+              }}>
+                <video
+                  controls
+                  autoPlay
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    width: 'auto',
+                    height: 'auto',
+                    borderRadius: '10px',
+                    outline: 'none'
+                  }}
+                >
+                  <source src={slide.src} type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+            ),
+            buttonPrev: () => null,
+            buttonNext: () => null,
+          }}
+          controller={{ closeOnBackdropClick: true }}
+        />
+      )}
+
       {/* Lightbox for avatar */}
       {comment.avatarUrl && comment.avatarUrl !== "./user-icon.png" && (
         <Lightbox
@@ -301,17 +435,17 @@ export const Comment: React.FC<CommentProps> = ({
         />
       )}
 
-      {/* Confirm Dialog for image deletion - только для автора */}
+      {/* Confirm Dialog for attachment deletion - только для автора */}
       {isCommentAuthor && (
         <ConfirmDialog 
-          open={imageDeleteDialogOpen}
-          onClose={() => setImageDeleteDialogOpen(false)}
-          onConfirm={confirmRemoveImage}
-          title="Remove Image"
-          message={comment.comment && comment.comment.trim().length > 0 
-            ? "Are you sure you want to remove this image? The text will remain."
-            : "Are you sure you want to remove this image? The comment will be deleted since there is no text."
-          }
+          open={attachmentDeleteDialogOpen}
+          onClose={() => {
+            setAttachmentDeleteDialogOpen(false);
+            setAttachmentToDelete(null);
+          }}
+          onConfirm={confirmRemoveAttachment}
+          title={`Remove ${getAttachmentTitle()}`}
+          message={getDeleteMessage()}
         />
       )}
     </>

@@ -6,36 +6,44 @@ import "yet-another-react-lightbox/styles.css";
 import "./CommentForm.css";
 
 interface CommentsFormProps {
-  handleSubmit: (text: string, imageFile?: File) => void;
+  handleSubmit: (text: string, imageFile?: File, videoFile?: File) => void;
   submitLabel?: string;
   hasCancelButton?: boolean;
   initialText?: string | null;
   handleCancel?: () => void;
   existingImageUrl?: string;
+  existingVideoUrl?: string;
   onSuccess?: () => void;
 }
 
 const MAX_CHARACTERS = 500;
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
+const SUPPORTED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg'];
 
 export const CommentForm: React.FC<CommentsFormProps> = ({
   handleSubmit,
-  submitLabel = "Send",
   hasCancelButton = false,
   initialText = "",
   handleCancel,
   existingImageUrl,
+  existingVideoUrl,
   onSuccess 
 }) => {
   const [text, setText] = useState(initialText || "");
   const [charCount, setCharCount] = useState((initialText?.length || 0));
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [videoLightboxOpen, setVideoLightboxOpen] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   
-  const isNearLimit = charCount > MAX_CHARACTERS * 0.8; // 80%
+  const isNearLimit = charCount > MAX_CHARACTERS * 0.8;
   const isOverLimit = charCount > MAX_CHARACTERS;
-  const isTextareaDisabled = (text?.trim().length || 0) === 0 && !imageFile && !existingImageUrl || isOverLimit;
+  const hasContent = (text?.trim().length || 0) > 0 || imageFile || videoFile || existingImageUrl || existingVideoUrl;
+  const isSubmitDisabled = !hasContent || isOverLimit;
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newText = e.target.value;
@@ -80,7 +88,21 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
     });
   };
 
-  const isSameImage = async (newFile: File, existingUrl: string): Promise<boolean> => {
+  const validateVideo = (file: File): boolean => {
+    if (file.size > MAX_VIDEO_SIZE) {
+      toast.error(`Video size must be less than ${MAX_VIDEO_SIZE / (1024 * 1024)}MB`);
+      return false;
+    }
+    
+    if (!SUPPORTED_VIDEO_TYPES.includes(file.type)) {
+      toast.error("Please select a supported video format (MP4, WebM, OGG)");
+      return false;
+    }
+    
+    return true;
+  };
+
+  const isSameFile = async (newFile: File, existingUrl: string): Promise<boolean> => {
     return new Promise((resolve) => {
       fetch(existingUrl)
         .then(response => response.blob())
@@ -92,12 +114,12 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
 
           const newReader = new FileReader();
           newReader.onload = (e) => {
-            const newImageData = e.target?.result as string;
+            const newFileData = e.target?.result as string;
             
             const existingReader = new FileReader();
             existingReader.onload = (e2) => {
-              const existingImageData = e2.target?.result as string;
-              resolve(newImageData === existingImageData);
+              const existingFileData = e2.target?.result as string;
+              resolve(newFileData === existingFileData);
             };
             existingReader.readAsDataURL(existingBlob);
           };
@@ -124,7 +146,7 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
       }
 
       if (existingImageUrl) {
-        const isDuplicate = await isSameImage(file, existingImageUrl);
+        const isDuplicate = await isSameFile(file, existingImageUrl);
         if (isDuplicate) {
           toast.error("This is the same image already attached to the comment");
           return;
@@ -157,16 +179,71 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
     }
   };
 
-  const removeImage = () => {
-    setImageFile(null);
-    setImagePreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+  const handleVideoSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!validateVideo(file)) {
+      return;
+    }
+
+    try {
+      if (existingVideoUrl) {
+        const isDuplicate = await isSameFile(file, existingVideoUrl);
+        if (isDuplicate) {
+          toast.error("This is the same video already attached to the comment");
+          return;
+        }
+      }
+
+      if (videoPreview) {
+        const newReader = new FileReader();
+        newReader.onload = (e) => {
+          const newVideoData = e.target?.result as string;
+          if (newVideoData === videoPreview) {
+            toast.error("This is the same video already selected");
+            return;
+          }
+          setVideoFile(file);
+          setVideoPreview(newVideoData);
+        };
+        newReader.readAsDataURL(file);
+      } else {
+        setVideoFile(file);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setVideoPreview(e.target?.result as string);
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (error) {
+      console.error('Error in handleVideoSelect:', error);
+      toast.error("Error processing video");
     }
   };
 
-  const triggerFileInput = () => {
-    fileInputRef.current?.click();
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+  };
+
+  const removeVideo = () => {
+    setVideoFile(null);
+    setVideoPreview(null);
+    if (videoInputRef.current) {
+      videoInputRef.current.value = "";
+    }
+  };
+
+  const triggerImageInput = () => {
+    imageInputRef.current?.click();
+  };
+
+  const triggerVideoInput = () => {
+    videoInputRef.current?.click();
   };
 
   const openLightbox = () => {
@@ -177,6 +254,14 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
     setLightboxOpen(false);
   };
 
+  const openVideoLightbox = () => {
+    setVideoLightboxOpen(true);
+  };
+
+  const closeVideoLightbox = () => {
+    setVideoLightboxOpen(false);
+  };
+
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     
@@ -185,15 +270,15 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
       return;
     }
     
-    const hasContent = (text?.trim().length || 0) > 0 || imageFile || existingImageUrl;
+    const hasContent = (text?.trim().length || 0) > 0 || imageFile || videoFile || existingImageUrl || existingVideoUrl;
     
     if (!hasContent) {
-      toast.error("Comment must have either text or an image");
+      toast.error("Comment must have either text, image or video");
       return;
     }
     
     try {
-      await handleSubmit(text?.trim() || "", imageFile || undefined);
+      await handleSubmit(text?.trim() || "", imageFile || undefined, videoFile || undefined);
       
       if (onSuccess) {
         onSuccess();
@@ -201,17 +286,18 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
         setText("");
         setCharCount(0);
         removeImage();
+        removeVideo();
       }
     } catch (error) {
-      console.error(' Error in onSubmit:', error);
+      console.error('Error in onSubmit:', error);
     }
   };
   
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (!isTextareaDisabled && !isOverLimit) {
-        handleSubmit(text?.trim() || "", imageFile || undefined);
+      if (!isSubmitDisabled && !isOverLimit) {
+        handleSubmit(text?.trim() || "", imageFile || undefined, videoFile || undefined);
         
         if (onSuccess) {
           onSuccess();
@@ -219,6 +305,7 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
           setText("");
           setCharCount(0);
           removeImage();
+          removeVideo();
         }
       }
     }
@@ -243,31 +330,93 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
           <button
             type="submit"
             className="comment-send-icon"
-            disabled={isTextareaDisabled}
+            disabled={isSubmitDisabled}
           >
             <Send size={20} />
           </button>
         </div>
   
-        {/* Hidden file input */}
+        {/* Hidden file inputs */}
         <input
           type="file"
-          ref={fileInputRef}
+          ref={imageInputRef}
           onChange={handleImageSelect}
           accept="image/*"
           style={{ display: 'none' }}
         />
+        <input
+          type="file"
+          ref={videoInputRef}
+          onChange={handleVideoSelect}
+          accept="video/*"
+          style={{ display: 'none' }}
+        />
+  
+        {/* Preview container for both image and video */}
+        {(imagePreview || videoPreview) && (
+          <div className="attachment-preview-container">
+            {/* Image Preview */}
+            {imagePreview && (
+              <div className="attachment-preview">
+                <img 
+                  src={imagePreview} 
+                  alt="Preview" 
+                  className="preview-media"
+                  onClick={openLightbox}
+                  style={{ cursor: 'pointer' }}
+                />
+                <button 
+                  type="button" 
+                  className="remove-attachment-button"
+                  onClick={removeImage}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+  
+            {/* Video Preview */}
+            {videoPreview && (
+              <div className="attachment-preview">
+                <div className="video-preview-wrapper">
+                  <video 
+                    src={videoPreview} 
+                    className="preview-media video-preview"
+                  />
+                  <div className="video-overlay" onClick={openVideoLightbox}>
+                    <div className="play-button">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                        <path d="M8 5v14l11-7z"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                <button 
+                  type="button" 
+                  className="remove-attachment-button"
+                  onClick={removeVideo}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
   
         <div className="comment-form-footer">
           <div className="comment-icons">
             <button 
               type="button" 
               className="comment-icon-button"
-              onClick={triggerFileInput}
+              onClick={triggerImageInput}
             >
               <Image size={18} />
             </button>
-            <button type="button" className="comment-icon-button">
+            <button 
+              type="button" 
+              className="comment-icon-button"
+              onClick={triggerVideoInput}
+            >
               <Video size={18} />
             </button>
             <button type="button" className="comment-icon-button">
@@ -285,36 +434,55 @@ export const CommentForm: React.FC<CommentsFormProps> = ({
             </button>
           )}
         </div>
-  
-        {imagePreview && (
-          <div className="image-preview-container">
-            <div className="image-preview">
-              <img 
-                src={imagePreview} 
-                alt="Preview" 
-                className="preview-image"
-                onClick={openLightbox}
-                style={{ cursor: 'pointer' }}
-              />
-              <button 
-                type="button" 
-                className="remove-image-button"
-                onClick={removeImage}
-              >
-                <X size={16} />
-              </button>
-            </div>
-          </div>
-        )}
       </form>
   
-      {/* Lightbox Overlay */}
+      {/* Lightbox for Image */}
       {imagePreview && (
-       <Lightbox
+        <Lightbox
           open={lightboxOpen}
           close={closeLightbox}
           slides={[{ src: imagePreview }]}
           render={{
+            buttonPrev: () => null,
+            buttonNext: () => null,
+          }}
+          controller={{ closeOnBackdropClick: true }}
+        />
+      )}
+
+      {/* Lightbox for Video */}
+      {videoPreview && (
+        <Lightbox
+          open={videoLightboxOpen}
+          close={closeVideoLightbox}
+          slides={[{ src: videoPreview }]}
+          render={{
+            slide: ({ slide }) => (
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                width: '100%',
+                height: '100%',
+                padding: '20px'
+              }}>
+                <video
+                  controls
+                  autoPlay
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    width: 'auto',
+                    height: 'auto',
+                    borderRadius: '10px',
+                    outline: 'none'
+                  }}
+                >
+                  <source src={slide.src} type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+            ),
             buttonPrev: () => null,
             buttonNext: () => null,
           }}

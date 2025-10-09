@@ -3,7 +3,7 @@ import { Request } from 'express';
 import CommentsService from './comments.service';
 import { CreateCommentDto } from './dto/createComment.dto';
 import { UpdateCommentDto } from './dto/updateComment.dto';
-import { CreateReplyDto } from './dto/createReplyCommentDto';
+import { CreateReplyDto } from './dto/createReplyComment.dto';
 import JwtRefreshGuard from 'src/authentication/guards/jwt-refresh-guards';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { CommentEntity } from './entities/comment.entity';
