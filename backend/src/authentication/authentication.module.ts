@@ -3,10 +3,8 @@ import { AuthenticationService } from './authentication.service';
 import { UsersModule } from '../users/users.module';
 import { AuthenticationController } from './authentication.controller';
 import { PassportModule } from '@nestjs/passport';
-import { LocalStrategy } from './jwt-strategy/local.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { JwtStrategy } from './jwt-strategy/jwt.strategy';
 import { JwtRefreshTokenStrategy } from './jwt-strategy/jwt-refresh-token-strategy';
 import { CaptchaModule } from './captcha/captcha.module';
 
@@ -27,7 +25,7 @@ import { CaptchaModule } from './captcha/captcha.module';
             }),
         }),
     ],
-    providers: [AuthenticationService, LocalStrategy, JwtStrategy, JwtRefreshTokenStrategy],
+    providers: [AuthenticationService, JwtRefreshTokenStrategy],
     exports: [JwtRefreshTokenStrategy],
     controllers: [AuthenticationController]
 })

@@ -52,9 +52,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       await axiosInstance.post("/authentication/register", data, { withCredentials: true });
       toast.success("Account created successfully");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Registration error:", error);
-      toast.error(error?.response?.data?.message || "Something went wrong");
+      toast.error((error as Error)?.message);
     } finally {
       set({ isSigningUp: false });
     }
@@ -69,9 +69,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ authUser: res.data });
       toast.success("Logged in successfully");
       return true;
-    } catch (error: any) {
+    } catch (error) {
       console.error("Login error:", error);
-      toast.error(error?.response?.data?.message || "Invalid credentials");
+      toast.error((error as Error)?.message);
       return false;
     } finally {
       set({ isLogging: false });
@@ -83,8 +83,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await axiosInstance.post("/authentication/log-out");
       set({ authUser: null });
       toast.success("Logged out successfully");
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Logout failed");
+    } catch (error) {
+      toast.error((error as Error)?.message);
     }
   },
 
@@ -100,9 +100,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
       set({ authUser: res.data });
       toast.success("Avatar updated successfully");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Avatar upload error:", error);
-      toast.error(error?.response?.data?.message || "Failed to update avatar");
+      toast.error((error as Error)?.message);
     }
   },
 
@@ -112,9 +112,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const currentUser = get().authUser;
       set({ authUser: currentUser ? { ...currentUser, avatarUrl: null } : null });
       toast.success("Avatar removed successfully");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Avatar removal error:", error);
-      toast.error(error?.response?.data?.message || "Failed to remove avatar");
+      toast.error((error as Error)?.message);
     }
   },
 }));
