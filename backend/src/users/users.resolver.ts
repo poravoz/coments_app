@@ -5,7 +5,7 @@ import { CreateUserDto } from './dto/createUser.dto';
 import { UpdateUserDto } from './dto/updateUser.dto';
 import { UseGuards } from '@nestjs/common';
 import JwtRefreshGuard from 'src/authentication/guards/jwt-refresh-guards';
-import { GraphQLUpload, FileUpload } from 'graphql-upload-ts';
+import { GraphQLUpload } from 'graphql-upload-ts';
 
 interface FileUploadType {
     filename: string;

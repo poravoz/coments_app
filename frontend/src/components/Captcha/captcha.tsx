@@ -101,20 +101,19 @@ export const Captcha: React.FC<CaptchaProps> = ({
     };
   }, []);
 
-  const getCharTransform = (index: number) => {
-    const rotations = [-12, 8, -15, 10, -8, 12, -10, 6];
-    const scales = [1.15, 0.85, 1.2, 0.9, 1.1, 0.95, 1.25, 0.8];
-    const opacities = [0.7, 0.85, 0.6, 0.9, 0.75, 0.8, 0.65, 0.95];
-    const blurs = [0.4, 0.15, 0.5, 0.1, 0.35, 0.2, 0.45, 0.05];
-    const xTranslate = [-1, 2, -3, 1, -2, 3, -1, 2];
-    const yTranslate = [1, -2, 3, -1, 2, -3, 1, -2];
-    
-    const i = index % 8;
-    
+  const getCharTransform = () => {
+    const rotation = (Math.random() - 0.5) * 40; 
+    const scale = 0.8 + Math.random() * 0.6; 
+    const opacity = 0.5 + Math.random() * 0.5; 
+    const blur = Math.random() * 0.6;
+    const xTranslate = (Math.random() - 0.5) * 6; 
+    const yTranslate = (Math.random() - 0.5) * 6; 
+    const hueRotate = Math.random() * 40 - 20; 
+
     return {
-      transform: `rotate(${rotations[i]}deg) scale(${scales[i]}) translate(${xTranslate[i]}px, ${yTranslate[i]}px)`,
-      opacity: opacities[i],
-      filter: `blur(${blurs[i]}px) contrast(1.2) brightness(${0.9 + Math.random() * 0.2})`
+      transform: `rotate(${rotation}deg) scale(${scale}) translate(${xTranslate}px, ${yTranslate}px)`,
+      opacity,
+      filter: `blur(${blur}px) contrast(1.3) hue-rotate(${hueRotate}deg)`
     };
   };
 
@@ -125,7 +124,7 @@ export const Captcha: React.FC<CaptchaProps> = ({
       <div className="captcha-box">
         <div className="captcha-text">
           {captchaStr.split("").map((char, i) => (
-            <span key={i} className="captcha-char" style={getCharTransform(i)}>
+            <span key={i} className="captcha-char" style={getCharTransform()}>
               {char}
             </span>
           ))}
@@ -154,6 +153,5 @@ export const Captcha: React.FC<CaptchaProps> = ({
         maxLength={captchaStr.length}
       />
     </div>
-
   );
 };

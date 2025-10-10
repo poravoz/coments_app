@@ -4,8 +4,6 @@ import { AuthUser, SignInData, SignUpData } from "../types/auth";
 import toast from "react-hot-toast";
 import { apolloClient } from "../lib/apolloClient";
 import { AVATAR_UPDATED_SUBSCRIPTION } from "../graphql/operations";
-import { AvatarUpdatedData } from "../types/graphql";
-import type { Subscription } from 'zen-observable-ts';
 
 interface AuthState {
   authUser: AuthUser | null;

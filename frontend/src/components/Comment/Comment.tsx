@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { CommentForm } from "../CommentForm/CommentForm";
 import { ActiveComment } from "../../types/types";
-import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import "./Comment.css";
 import { CommentType } from "../../types/commentType";

@@ -21,7 +21,7 @@ export class UsersService {
   }
 
   private async uploadToCloudinary(file: Express.Multer.File, resource_type: 'image' | 'video' | 'raw'): Promise<{ secure_url: string }> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const stream = cloudinary.uploader.upload_stream(
         { 
           resource_type,
@@ -33,7 +33,7 @@ export class UsersService {
         (error: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
           if (error || !result) {
             console.error('Something went wrong', error);
-            return reject(error || new Error('Upload to Cloudinary failed'));
+            return (error || new Error('Upload to Cloudinary failed'));
           }
           resolve({ secure_url: result.secure_url });
         }
