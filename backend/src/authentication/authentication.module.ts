@@ -27,7 +27,7 @@ import { CaptchaModule } from './captcha/captcha.module';
     ],
     providers: [AuthenticationService, JwtRefreshTokenStrategy],
     exports: [JwtRefreshTokenStrategy],
-    controllers: [AuthenticationController]
+    controllers: [AuthenticationController],
 })
 
 export class AuthenticationModule {}

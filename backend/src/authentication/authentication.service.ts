@@ -85,26 +85,25 @@ export class AuthenticationService {
     }
 
     public async getAuthenticatedUser(email: string, plainTextPassword: string): Promise<UserEntity> {
-        try {
-          const users = await this.usersService.getUserByEmail(email);
-          if (users.length === 0) {
-            throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
-          }
-          const user = users[0];
-          if (!user.password) {
-            throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
-          }
-          
-          const isPasswordValid = await this.verifyPassword(plainTextPassword, user.password);
-          if (!isPasswordValid) {
-            throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
-          }
-
-          user.password = undefined;
-          return user;
-        } catch (error) {
-          throw error;
+      try {
+        const user = await this.usersService.getUserByEmail(email);  // ← Direct assignment
+        if (!user) { 
+          throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
         }
+        if (!user.password) {
+          throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
+        }
+        
+        const isPasswordValid = await this.verifyPassword(plainTextPassword, user.password);
+        if (!isPasswordValid) {
+          throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
+        }
+  
+        user.password = undefined;
+        return user;
+      } catch (error) {
+        throw error;
+      }
     }
     
     private async verifyPassword(plainTextPassword: string, hashedPassword: string): Promise<boolean> {

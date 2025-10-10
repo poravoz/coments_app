@@ -2,6 +2,10 @@ import { create } from "zustand";
 import { axiosInstance } from "../lib/axios";
 import { AuthUser, SignInData, SignUpData } from "../types/auth";
 import toast from "react-hot-toast";
+import { apolloClient } from "../lib/apolloClient";
+import { AVATAR_UPDATED_SUBSCRIPTION } from "../graphql/operations";
+import { AvatarUpdatedData } from "../types/graphql";
+import type { Subscription } from 'zen-observable-ts';
 
 interface AuthState {
   authUser: AuthUser | null;
@@ -15,6 +19,7 @@ interface AuthState {
   checkCaptchaRequirement: (email: string) => Promise<boolean>;
   updateAvatar: (file: File) => Promise<void>;
   removeAvatar: () => Promise<void>;
+  subscribeToAvatarUpdates: () => () => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -98,7 +103,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           "Content-Type": "multipart/form-data",
         },
       });
-      set({ authUser: res.data });
       toast.success("Avatar updated successfully");
     } catch (error) {
       console.error("Avatar upload error:", error);
@@ -109,12 +113,59 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   removeAvatar: async () => {
     try {
       await axiosInstance.delete<AuthUser>("/users/avatar", { withCredentials: true });
-      const currentUser = get().authUser;
-      set({ authUser: currentUser ? { ...currentUser, avatarUrl: null } : null });
       toast.success("Avatar removed successfully");
     } catch (error) {
       console.error("Avatar removal error:", error);
       toast.error((error as Error)?.message);
+    }
+  },
+
+  subscribeToAvatarUpdates: () => {
+    const currentUser = get().authUser;
+    
+    if (!currentUser?.id) {
+      return () => {};
+    }
+  
+    
+    try {
+      const subscription = apolloClient.subscribe({
+        query: AVATAR_UPDATED_SUBSCRIPTION,
+        variables: {
+          userId: currentUser.id
+        }
+      }).subscribe({
+        next: (result: any) => {
+          
+          const avatarUpdated = result.data?.avatarUpdated;
+          
+          if (avatarUpdated) {
+            const updatedUser = avatarUpdated;
+            const currentUserState = get().authUser;
+            
+            
+            if (currentUserState && currentUserState.id === updatedUser.id) {
+              set({ 
+                authUser: { 
+                  ...currentUserState, 
+                  avatarUrl: updatedUser.avatarUrl 
+                } 
+              });
+            }
+          } else {
+          }
+        },
+        error: (error: Error) => {
+          console.error('Subscription error:', error);
+        },
+      });
+  
+      return () => {
+        subscription.unsubscribe();
+      };
+    } catch (error) {
+      console.error('Failed to create avatar subscription:', error);
+      return () => {};
     }
   },
 }));

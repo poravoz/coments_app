@@ -1,26 +1,31 @@
-import { IsString, IsOptional, IsBoolean, IsArray, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import { InputType, Field } from '@nestjs/graphql';
+import { IsString, IsOptional, IsBoolean, IsArray } from 'class-validator';
 
+@InputType()
 class AttachmentToRemove {
+  @Field(() => String)
   @IsString()
   url: string;
 
+  @Field(() => String)
   @IsString()
-  type: 'image' | 'video' | 'attachment';
+  type: string;
 }
 
+@InputType()
 export class UpdateCommentDto {
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   comment?: string;
 
+  @Field(() => String, { nullable: true })
   @IsBoolean()
   @IsOptional()
   clearAttachments?: boolean;
 
+  @Field(() => [AttachmentToRemove], { nullable: true })
   @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => AttachmentToRemove)
   @IsOptional()
   removeAttachments?: AttachmentToRemove[];
 }

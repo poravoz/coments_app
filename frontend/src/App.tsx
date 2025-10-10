@@ -8,13 +8,30 @@ import {Toaster} from "react-hot-toast"
 import "./App.css";
 import { NavBar } from "./components/NavBar/NavBar";
 import { HomePage } from "./pages/HomePage/HomePage";
+import { useCommentsStore } from "./store/useCommentsStore";
+
 
 function App() {
-  const { authUser, checkAuth, isCheckingAuth } = useAuthStore();
+  const { authUser, subscribeToAvatarUpdates, checkAuth, isCheckingAuth } = useAuthStore();
+  const { subscribeToComments } = useCommentsStore();
+
+  useEffect(() => {
+    checkAuth();
+    
+    const unsubscribeAvatar = subscribeToAvatarUpdates();
+    const unsubscribeComments = subscribeToComments();
+    
+
+    return () => {
+      unsubscribeAvatar();
+      unsubscribeComments();
+    };
+  }, [checkAuth, subscribeToAvatarUpdates, subscribeToComments]);
 
   useEffect (() => {
     checkAuth()
   }, [checkAuth]);
+
 
   if (isCheckingAuth && !authUser) {
     return (
@@ -42,3 +59,5 @@ function App() {
 }
 
 export default App;
+
+

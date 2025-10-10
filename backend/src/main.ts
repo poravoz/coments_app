@@ -6,7 +6,6 @@ import { ConfigService } from '@nestjs/config';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(cookieParser());
-
   const configService = app.get(ConfigService);
   const clientOrigin = configService.get<string>('CLIENT_ORIGIN');
 

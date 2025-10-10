@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UploadedFiles, UseGuards, UseInterceptors, ValidationPipe, HttpException, HttpStatus } from '@nestjs/common';
 import { Request } from 'express';
-import CommentsService from './comments.service';
+import { CommentsService } from './comments.service';
 import { CreateCommentDto } from './dto/createComment.dto';
 import { UpdateCommentDto } from './dto/updateComment.dto';
 import { CreateReplyDto } from './dto/createReplyComment.dto';
@@ -17,19 +17,30 @@ export default class CommentsController {
   ) {}
 
   @Get()
-  getAllComments(): Promise<CommentResponse[]> {
-    return this.commentsService.getAllComments();
+  async getAllComments(): Promise<CommentResponse[]> {
+    const comments = await this.commentsService.getAllComments();
+    
+    return comments.map(comment => ({
+      ...comment,
+      createdAt: comment.createdAt.toLocaleString('uk-UA', { hour12: false }),
+    }));
   }
 
-  @Get(':id')
-  getCommentById(@Param('id') id: string): Promise<CommentResponse> {
-    return this.commentsService.getCommentById(id);
+ @Get(':id')
+  async getCommentById(@Param('id') id: string): Promise<CommentResponse> {
+    const comment = await this.commentsService.getCommentById(id);
+    
+    return {
+      ...comment,
+      createdAt: comment.createdAt.toLocaleString('uk-UA', { hour12: false }),
+    };
   }
+
   
   @Post()
   @UseGuards(JwtRefreshGuard)
   @UseInterceptors(FileFieldsInterceptor([
-    { name: 'images', maxCount: 5 }, // Supports multiple images
+    { name: 'images', maxCount: 1 }, // Supports multiple images
     { name: 'video', maxCount: 1 },
     { name: 'attachment', maxCount: 1 }, // Supports .txt, .docx, etc.
   ]))
@@ -61,7 +72,7 @@ export default class CommentsController {
   @Post(':parentId/replies')
   @UseGuards(JwtRefreshGuard)
   @UseInterceptors(FileFieldsInterceptor([
-    { name: 'images', maxCount: 5 },
+    { name: 'images', maxCount: 1 },
     { name: 'video', maxCount: 1 },
     { name: 'attachment', maxCount: 1 },
   ]))
@@ -93,7 +104,7 @@ export default class CommentsController {
   @Patch(':id')
   @UseGuards(JwtRefreshGuard)
   @UseInterceptors(FileFieldsInterceptor([
-    { name: 'images', maxCount: 5 },
+    { name: 'images', maxCount: 1 },
     { name: 'video', maxCount: 1 },
     { name: 'attachment', maxCount: 1 },
   ]))

@@ -7,13 +7,18 @@ import { UpdateUserDto } from './dto/updateUser.dto';
 import * as bcrypt from 'bcrypt';
 import cloudinary from '../database/cloudinary';
 import { UploadApiResponse, UploadApiErrorResponse } from 'cloudinary';
+import { PubSub } from 'graphql-subscriptions';
 
 @Injectable()
 export class UsersService {
+  private pubSub: PubSub;
+
   constructor(
     @InjectRepository(UserEntity)
     private usersRepository: Repository<UserEntity>,
-  ) {}
+  ) {
+    this.pubSub = new PubSub();
+  }
 
   private async uploadToCloudinary(file: Express.Multer.File, resource_type: 'image' | 'video' | 'raw'): Promise<{ secure_url: string }> {
     return new Promise((resolve, reject) => {
@@ -27,7 +32,7 @@ export class UsersService {
         },
         (error: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
           if (error || !result) {
-            console.error('Cloudinary upload error:', error);
+            console.error('Something went wrong', error);
             return reject(error || new Error('Upload to Cloudinary failed'));
           }
           resolve({ secure_url: result.secure_url });
@@ -41,26 +46,26 @@ export class UsersService {
     return await this.usersRepository.find({ relations: ['comments'] });
   }
 
-  async getUserById(id: string): Promise<UserEntity[]> {
-    if (!id) {
-      return [];
-    }
+  async getUserById(id: string): Promise<UserEntity> {
     const user = await this.usersRepository.findOne({
       where: { id },
       relations: ['comments'],
     });
-    return user ? [user] : [];
+    if (!user) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+    return user;
   }
 
-  async getUserByEmail(email: string): Promise<UserEntity[]> {
-    if (!email) {
-      return [];
-    }
+  async getUserByEmail(email: string): Promise<UserEntity> {
     const user = await this.usersRepository.findOne({
       where: { email },
       relations: ['comments'],
     });
-    return user ? [user] : [];
+    if (!user) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+    return user;
   }
 
   async createUser(userData: CreateUserDto): Promise<UserEntity> {
@@ -69,59 +74,73 @@ export class UsersService {
   }
 
   async updateUser(id: string, updateData: Partial<UpdateUserDto>): Promise<UserEntity> {
-    const users = await this.getUserById(id);
-    if (users.length === 0) {
-      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
-    }
-    const user = users[0]; // Take the first user
+    const user = await this.getUserById(id);
     Object.assign(user, updateData);
-    return await this.usersRepository.save(user);
-  }
-
-  async uploadAvatar(userId: string, file: Express.Multer.File): Promise<UserEntity> {
-    if (!userId) {
-      throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
-    }
-    if (!['image/jpeg', 'image/gif', 'image/png'].includes(file.mimetype)) {
-      throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
-    }
-    const users = await this.getUserById(userId);
-    if (users.length === 0) {
-      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
-    }
-        
-    const result = await this.uploadToCloudinary(file, 'image');
+    const updatedUser = await this.usersRepository.save(user);
     
-    await this.usersRepository.update(userId, { avatarUrl: result.secure_url });
-    const updatedUser = (await this.getUserById(userId))[0];
-    if (!updatedUser) {
-      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
-    }
+    // Publish real-time update
+    this.pubSub.publish('userUpdated', { userUpdated: updatedUser });
+    
     return updatedUser;
   }
 
+  async uploadAvatar(userId: string, file: Express.Multer.File): Promise<UserEntity> {
+    if (!['image/jpeg', 'image/gif', 'image/png'].includes(file.mimetype)) {
+      throw new HttpException('Invalid file type', HttpStatus.BAD_REQUEST);
+    }
+    
+
+    const user = await this.getUserById(userId);
+    const result = await this.uploadToCloudinary(file, 'image');
+    
+    user.avatarUrl = result.secure_url;
+    const updatedUser = await this.usersRepository.save(user);
+    
+    
+    this.pubSub.publish('avatarUpdated', { 
+      avatarUpdated: {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        avatarUrl: updatedUser.avatarUrl
+      }
+    });
+
+    this.pubSub.publish('userUpdated', { 
+      userUpdated: {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        avatarUrl: updatedUser.avatarUrl
+      }
+    });
+    
+    return updatedUser;
+  }
   async removeAvatar(userId: string): Promise<UserEntity> {
-    if (!userId) {
-      throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
-    }
-    const users = await this.getUserById(userId);
-    if (users.length === 0) {
-      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
-    }
-    await this.usersRepository.update(userId, { avatarUrl: null });
-    const updatedUser = (await this.getUserById(userId))[0];
-    if (!updatedUser) {
-      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
-    }
+    const user = await this.getUserById(userId);
+    user.avatarUrl = null;
+    const updatedUser = await this.usersRepository.save(user);
+    
+    this.pubSub.publish('avatarUpdated', { 
+      avatarUpdated: {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        avatarUrl: null
+      }
+    });
+
+    this.pubSub.publish('userUpdated', { 
+      userUpdated: {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        avatarUrl: null
+      }
+    });
+    
     return updatedUser;
   }
 
   async removeUser(id: string): Promise<UserEntity> {
-    const users = await this.getUserById(id);
-    if (users.length === 0) {
-      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
-    }
-    const user = users[0];
+    const user = await this.getUserById(id);
     return await this.usersRepository.remove(user);
   }
 
@@ -132,17 +151,8 @@ export class UsersService {
     });
   }
 
-  async getById(id: string): Promise<UserEntity[]> {
-    const user = await this.usersRepository.findOne({ where: { id } });
-    return user ? [user] : [];
-  }
-
   async getUserIfRefreshTokenMatches(refreshToken: string, userId: string): Promise<UserEntity | null> {
-    const users = await this.getById(userId);
-    if (users.length === 0) {
-      return null;
-    }
-    const user = users[0];
+    const user = await this.getUserById(userId);
     if (!user.currentHashedRefreshToken) {
       return null;
     }
@@ -157,5 +167,13 @@ export class UsersService {
     return this.usersRepository.update(userId, {
       currentHashedRefreshToken: null,
     });
+  }
+
+  getUserUpdatedSubscription() {
+    return this.pubSub.asyncIterableIterator('userUpdated');
+  }
+  
+  getAvatarUpdatedSubscription() {
+    return this.pubSub.asyncIterableIterator('avatarUpdated');
   }
 }

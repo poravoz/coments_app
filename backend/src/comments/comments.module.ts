@@ -1,21 +1,20 @@
 import { Module } from '@nestjs/common';
-import CommentsController from './comments.controller';
-import CommentsService from './comments.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CommentEntity } from './entities/comment.entity';
-import { UsersModule } from 'src/users/users.module';
-import { MulterModule } from '@nestjs/platform-express';
-import multer from 'multer';
+import { CommentsService } from './comments.service';
+import { CommentsResolver } from './comments.resolver';
+import { UsersModule } from '../users/users.module';
+import CommentsController from './comments.controller';
+import { PubSubModule } from 'src/pubsub/pubsub.module';
 
 @Module({
-    imports: [
-      TypeOrmModule.forFeature([CommentEntity]), 
-      UsersModule,
-      MulterModule.register({
-        storage: multer.memoryStorage(),
-      }),
-    ],
-    controllers: [CommentsController],
-    providers: [CommentsService],
+  imports: [
+    TypeOrmModule.forFeature([CommentEntity]),
+    UsersModule,
+    PubSubModule,
+  ],
+  controllers: [CommentsController],
+  providers: [CommentsService, CommentsResolver],
+  exports: [CommentsService],
 })
 export class CommentsModule {}

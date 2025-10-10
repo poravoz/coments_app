@@ -7,18 +7,27 @@ import { UpdateCommentDto } from './dto/updateComment.dto';
 import { UsersService } from 'src/users/users.service';
 import cloudinary from '../database/cloudinary';
 import { UploadApiResponse, UploadApiErrorResponse } from 'cloudinary';
-import { CommentResponse } from './interface/comment-response.dto';
 import { CreateReplyDto } from './dto/createReplyComment.dto';
 import { Attachment } from './interface/attachment.dto';
+import { PubSub } from 'graphql-subscriptions';
 
+export type ProcessedFiles = {
+  images?: Express.Multer.File[];
+  video?: Express.Multer.File[];
+  attachment?: Express.Multer.File[];
+};
 
 @Injectable()
-export default class CommentsService {
+export class CommentsService {
+  private pubSub: PubSub;
+
   constructor(
     @InjectRepository(CommentEntity)
     private commentRepository: Repository<CommentEntity>,
     private readonly usersService: UsersService
-  ) {}
+  ) {
+    this.pubSub = new PubSub();
+  }
 
   private async uploadToCloudinary(file: Express.Multer.File, resource_type: 'image' | 'video' | 'raw'): Promise<{ secure_url: string }> {
     return new Promise((resolve, reject) => {
@@ -26,7 +35,7 @@ export default class CommentsService {
         { resource_type },
         (error: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
           if (error || !result) {
-            console.error('Cloudinary upload error:', error);
+            console.error('Something went wrong:', error);
             return reject(error || new Error('Upload to Cloudinary failed'));
           }
           resolve({ secure_url: result.secure_url });
@@ -36,201 +45,173 @@ export default class CommentsService {
     });
   }
 
-  private async processFiles(files?: 
-    { images?: Express.Multer.File[], 
-      video?: Express.Multer.File[], 
-      attachment?: Express.Multer.File[] }): 
-    Promise<Attachment[]> {
+  private async processFiles(files?: { images?: Express.Multer.File[], video?: Express.Multer.File[], attachment?: Express.Multer.File[] }): Promise<Attachment[]> {
+    const attachments: Attachment[] = [];
 
-      const attachments: Attachment[] = [];
-
-      if (files?.images && files.images.length > 0) {
-        for (const image of files.images) {
-          if (!['image/jpeg', 'image/gif', 'image/png'].includes(image.mimetype)) {
-            throw new HttpException(`Something went wrong: ${image.mimetype}`, HttpStatus.BAD_REQUEST);
-          }
-
-      const result = await this.uploadToCloudinary(image, 'image');
+    if (files?.images && files.images.length > 0) {
+      for (const image of files.images) {
+        if (!['image/jpeg', 'image/gif', 'image/png'].includes(image.mimetype)) {
+          throw new HttpException(`Invalid image type: ${image.mimetype}`, HttpStatus.BAD_REQUEST);
+        }
+        const result = await this.uploadToCloudinary(image, 'image');
         attachments.push({ 
-                            type: 'image', 
-                            url: result.secure_url,
-                            originalName: image.originalname
-                          });
-          }
-        }
-
-      if (files?.video && files.video.length > 0) {
-        const video = files.video[0];
-          if (!video.mimetype.startsWith('video/')) {
-            throw new HttpException(`Something went wrong: ${video.mimetype}`, HttpStatus.BAD_REQUEST);
-          }
-
-          const result = await this.uploadToCloudinary(video, 'video');
-            attachments.push({ 
-                                type: 'video', 
-                                url: result.secure_url,
-                                originalName: video.originalname 
-                              });
-          }
-
-      if (files?.attachment && files.attachment.length > 0) {
-          const attachmentFile = files.attachment[0];
-          const allowedMimetypes = [
-            'text/plain',
-            'application/octet-stream',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'application/msword',
-            'application/pdf',
-            'application/vnd.ms-excel'
-          ];
-
-          if (!allowedMimetypes.includes(attachmentFile.mimetype)) {
-              throw new HttpException(`Something went wrong: ${attachmentFile.mimetype}`, HttpStatus.BAD_REQUEST);
-            }
-
-            if (attachmentFile.size > 100 * 1024) {
-                throw new HttpException('The file size is 100 KB', HttpStatus.BAD_REQUEST);
-            }
-            
-            try {
-              const result = await this.uploadToCloudinary(attachmentFile, 'raw');
-              attachments.push({ 
-                                  type: 'attachment', 
-                                  url: result.secure_url,
-                                  originalName: attachmentFile.originalname 
-                              });
-            } catch (error) {
-              console.error('Error uploading attachment to Cloudinary:', error);
-              throw new HttpException(`Something went wrong: ${error.message}`, HttpStatus.BAD_REQUEST);
-            }
-          }
-
-          return attachments;
-        }
-
-  async getAllComments(): Promise<CommentResponse[]> {
-    const comments = await this.commentRepository.find({ 
-                                                          relations: ['user', 'children'] 
-                                                      });
-    
-    return comments.map(comment => ({
-                                      ...comment,
-                                      createdAt: comment.createdAt.toLocaleString('uk-UA', { hour12: false }),
-                                    }));
-                        }
-
-    async getCommentById(id: string): Promise<CommentResponse> {
-          const comment = await this.commentRepository.findOne({ 
-                                                                  where: { id },
-                                                                  relations: ['user', 'children']
-                                                              });
-      if (!comment) {
-        throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
+          type: 'image', 
+          url: result.secure_url,
+          originalName: image.originalname
+        });
       }
-    
-        return {
-                  ...comment,
-                  createdAt: comment.createdAt.toLocaleString('uk-UA', { hour12: false }),
-                };
-        }
-
-  async createComment(commentDto: CreateCommentDto, 
-                      userId: string, 
-                      files?: { 
-                        images?: Express.Multer.File[], 
-                        video?: Express.Multer.File[], 
-                        attachment?: Express.Multer.File[] }): 
-                      Promise<CommentEntity> {
-
-    const users = await this.usersService.getUserById(userId);
-    if (users.length === 0) {
-      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
     }
-    const user = users[0];
+
+    if (files?.video && files.video.length > 0) {
+      const video = files.video[0];
+      if (!video.mimetype.startsWith('video/')) {
+        throw new HttpException(`Invalid video type: ${video.mimetype}`, HttpStatus.BAD_REQUEST);
+      }
+      const result = await this.uploadToCloudinary(video, 'video');
+      attachments.push({ 
+        type: 'video', 
+        url: result.secure_url,
+        originalName: video.originalname 
+      });
+    }
+
+    if (files?.attachment && files.attachment.length > 0) {
+      const attachmentFile = files.attachment[0];
+      const allowedMimetypes = [
+        'text/plain',
+        'application/octet-stream',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/msword',
+        'application/pdf',
+        'application/vnd.ms-excel'
+      ];
+
+      if (!allowedMimetypes.includes(attachmentFile.mimetype)) {
+        throw new HttpException(`Invalid attachment type: ${attachmentFile.mimetype}`, HttpStatus.BAD_REQUEST);
+      }
+
+      if (attachmentFile.size > 100 * 1024) {
+        throw new HttpException('File size too large', HttpStatus.BAD_REQUEST);
+      }
+      
+      try {
+        const result = await this.uploadToCloudinary(attachmentFile, 'raw');
+        attachments.push({ 
+          type: 'attachment', 
+          url: result.secure_url,
+          originalName: attachmentFile.originalname 
+        });
+      } catch (error) {
+        console.error('Something went wrong', error);
+        throw new HttpException(`Upload failed: ${error.message}`, HttpStatus.BAD_REQUEST);
+      }
+    }
+
+    return attachments;
+  }
+
+  async getAllComments(): Promise<CommentEntity[]> {
+    return await this.commentRepository.find({ 
+      relations: ['user', 'children'] 
+    });
+  }
+
+  async getCommentById(id: string): Promise<CommentEntity> {
+    const comment = await this.commentRepository.findOne({ 
+      where: { id },
+      relations: ['user', 'children']
+    });
+    if (!comment) {
+      throw new HttpException('Comment not found', HttpStatus.NOT_FOUND);
+    }
+    return comment;
+  }
+
+  async createComment(commentDto: CreateCommentDto, userId: string, files?: ProcessedFiles): Promise<CommentEntity> {
+    const user = await this.usersService.getUserById(userId);
     const attachments = files ? await this.processFiles(files) : [];
+    
     const newComment = this.commentRepository.create({
       comment: commentDto.comment,
       user,
       parentId: commentDto.parentId || null,
       attachments: attachments.length > 0 ? attachments : undefined,
     });
-    await this.commentRepository.save(newComment);
-    return newComment; 
+    
+    const savedComment = await this.commentRepository.save(newComment);
+    
+    // Publish real-time update
+    this.pubSub.publish('commentAdded', { commentAdded: savedComment });
+    
+    return savedComment;
   }
 
-  async createReply(parentId: string, 
-                    replyDto: CreateReplyDto, 
-                    userId: string, files?: { 
-                      images?: Express.Multer.File[], 
-                      video?: Express.Multer.File[], 
-                      attachment?: Express.Multer.File[] }): 
-                    Promise<CommentEntity> {
-
+  async createReply(parentId: string, replyDto: CreateReplyDto, userId: string, files?: ProcessedFiles): Promise<CommentEntity> {
     const parentComment = await this.commentRepository.findOne({ 
       where: { id: parentId },
       relations: ['children']
     });
     if (!parentComment) {
-      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
+      throw new HttpException('Parent comment not found', HttpStatus.NOT_FOUND);
     }
-
-    const users = await this.usersService.getUserById(userId);
-    if (users.length === 0) {
-      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
-    }
-    const user = users[0];
+  
+    const user = await this.usersService.getUserById(userId);
     const attachments = files ? await this.processFiles(files) : [];
+    
     const newReply = this.commentRepository.create({
       comment: replyDto.comment,
       user,
-      parentId: parentId,
+      parentId: parentId, 
       attachments: attachments.length > 0 ? attachments : undefined,
     });
-    await this.commentRepository.save(newReply);
-    return newReply;
+    
+    const savedReply = await this.commentRepository.save(newReply);
+    
+    this.pubSub.publish('commentAdded', { 
+      commentAdded: {
+        ...savedReply,
+        parentId: savedReply.parentId 
+      }
+    });
+    
+    return savedReply;
   }
 
-  async updateComment(id: string, 
-    updateDto: UpdateCommentDto, 
-    userId: string, 
-    files?: { 
-      images?: Express.Multer.File[], 
-      video?: Express.Multer.File[], 
-      attachment?: Express.Multer.File[] }): 
-    Promise<CommentEntity> {
-
+  async updateComment(id: string, updateDto: UpdateCommentDto, userId: string, files?: ProcessedFiles): Promise<CommentEntity> {
     const comment = await this.commentRepository.findOne({ 
-                                                            where: { id },
-                                                            relations: ['user']
-                                                          });
-      if (!comment) {
-        throw new HttpException('Comment not found', HttpStatus.NOT_FOUND);
-      }
-    
-      if (comment.user.id !== userId) {
-        throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
-      }
+      where: { id },
+      relations: ['user']
+    });
+    if (!comment) {
+      throw new HttpException('Comment not found', HttpStatus.NOT_FOUND);
+    }    
+    if (comment.user.id !== userId) {
+      throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
+    }
 
-      const updateData: Partial<CommentEntity> = {};
+    const updateData: Partial<CommentEntity> = {};
 
-      if (updateDto.comment !== undefined) {
-        updateData.comment = updateDto.comment;
-      }
+    if (updateDto.comment !== undefined) {
+      updateData.comment = updateDto.comment;
+    }
 
     let updatedAttachments = comment.attachments || [];
 
+    // Handle removing specific attachments
     if (updateDto.removeAttachments && updateDto.removeAttachments.length > 0) {
       updatedAttachments = updatedAttachments.filter(att => 
-      !updateDto.removeAttachments!.some(removeAtt => 
-      removeAtt.url === att.url && removeAtt.type === att.type
-      )
-    );
-  }
+        !updateDto.removeAttachments!.some(removeAtt => 
+          removeAtt.url === att.url && removeAtt.type === att.type
+        )
+      );
+    }
 
+    // Handle clearing all attachments
     if (updateDto.clearAttachments) {
       updatedAttachments = [];
     }
 
+    // Handle adding new files
     const hasFiles = files && (
       (files.images && files.images.length > 0) ||
       (files.video && files.video.length > 0) ||
@@ -238,34 +219,36 @@ export default class CommentsService {
     );
 
     if (hasFiles) {
-        const newAttachments = await this.processFiles(files);
-
-        newAttachments.forEach(newAtt => {
+      const newAttachments = await this.processFiles(files);
+      newAttachments.forEach(newAtt => {
+        // Remove existing attachments of the same type before adding new ones
         updatedAttachments = updatedAttachments.filter(existingAtt => 
-        existingAtt.type !== newAtt.type
-      );
-    });
-
+          existingAtt.type !== newAtt.type
+        );
+      });
       updatedAttachments = [...updatedAttachments, ...newAttachments];
     }
 
-      updateData.attachments = updatedAttachments.length > 0 ? updatedAttachments : null;
+    updateData.attachments = updatedAttachments.length > 0 ? updatedAttachments : null;
 
-      if (Object.keys(updateData).length > 0) {
-        await this.commentRepository.update(id, updateData);
-      }
+    if (Object.keys(updateData).length > 0) {
+      await this.commentRepository.update(id, updateData);
+    }
 
     const updatedComment = await this.commentRepository.findOne({ 
-                                                                  where: { id },
-                                                                  relations: ['user']
-                                                                });
+      where: { id },
+      relations: ['user']
+    });
 
-      if (!updatedComment) {
-        throw new HttpException('Comment not found', HttpStatus.NOT_FOUND);
-      }
-
-      return updatedComment;
+    if (!updatedComment) {
+      throw new HttpException('Comment not found', HttpStatus.NOT_FOUND);
     }
+
+    // Publish real-time update
+    this.pubSub.publish('commentUpdated', { commentUpdated: updatedComment });
+
+    return updatedComment;
+  }
 
   async deleteComment(id: string): Promise<CommentEntity> {
     const comment = await this.commentRepository.findOne({ 
@@ -273,7 +256,7 @@ export default class CommentsService {
       relations: ['user', 'children'] 
     });
     if (!comment) {
-      throw new HttpException('Something went wrong', HttpStatus.NOT_FOUND);
+      throw new HttpException('Comment not found', HttpStatus.NOT_FOUND);
     }
   
     if (comment.children && comment.children.length > 0) {
@@ -283,8 +266,12 @@ export default class CommentsService {
         }
       }
     }
-  
-    return await this.commentRepository.remove(comment);
+    
+    const deletedComment = await this.commentRepository.remove(comment);
+    
+    this.pubSub.publish('commentDeleted', { commentDeleted: { id } });
+    
+    return deletedComment;
   }
 
   async getCommentsByUserId(userId: string): Promise<CommentEntity[]> {
@@ -292,5 +279,18 @@ export default class CommentsService {
       where: { user: { id: userId } },
       relations: ['user']
     });
+  }
+
+  // Subscription methods
+  getCommentAddedSubscription() {
+    return this.pubSub.asyncIterableIterator('commentAdded');
+  }
+  
+  getCommentUpdatedSubscription() {
+    return this.pubSub.asyncIterableIterator('commentUpdated');
+  }
+  
+  getCommentDeletedSubscription() {
+    return this.pubSub.asyncIterableIterator('commentDeleted');
   }
 }

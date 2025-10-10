@@ -4,6 +4,7 @@ import { ConfirmDialog } from "../ConfirmDialog/ConfirmDialog";
 import { ActiveComment } from "../../types/types";
 import { Comment } from "../Comment/Comment";
 import { useCommentsStore } from "../../store/useCommentsStore";
+import { useAuthStore } from "../../store/useAuthStore";
 import "./Comments.css";
 import { CommentType } from "../../types/commentType";
 
@@ -13,18 +14,41 @@ export const Comments = () =>  {
   const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const commentsPerPage = 25;
+  
   const { 
     comments: storeComments, 
     getComments, 
     createComment, 
     updateComment, 
     deleteComment, 
-    removeAttachment 
+    removeAttachment,
+    subscribeToComments,
+    subscribeToUserUpdates,
   } = useCommentsStore();
 
+  const { subscribeToAvatarUpdates } = useAuthStore();
+
+  // Subscribe to real-time updates
   useEffect(() => {
     getComments();
-  }, []);
+    
+    // Subscribe to comments
+    const unsubscribeComments = subscribeToComments();
+    
+    // Subscribe to avatar updates
+    const unsubscribeAvatars = subscribeToAvatarUpdates();
+    
+    // Subscribe to user updates for all users
+    const unsubscribeUserUpdates = subscribeToUserUpdates();
+    
+    // Cleanup subscriptions on unmount
+    return () => {
+      unsubscribeComments();
+      unsubscribeAvatars();
+      unsubscribeUserUpdates(); 
+    };
+  }, [getComments, subscribeToComments, subscribeToAvatarUpdates, subscribeToUserUpdates]);
+
 
   const addComment = (text: string, imageFile?: File, videoFile?: File, attachmentFile?: File, parentId: string | null = null, callback?: () => void) => {
     createComment(text, parentId, imageFile, videoFile, attachmentFile).then((newComment) => {
@@ -60,13 +84,17 @@ export const Comments = () =>  {
 
   const buildTree = (comments: CommentType[]): Map<string, CommentType[]> => {
     const tree = new Map<string, CommentType[]>();
+        
     comments.forEach((comment) => {
       const parentId = comment.parentId || "root";
+      
       if (!tree.has(parentId)) {
         tree.set(parentId, []);
       }
       tree.get(parentId)!.push(comment);
+      
     });
+    
     return tree;
   };
 
@@ -110,6 +138,7 @@ export const Comments = () =>  {
     const children = (tree.get(parentId) || []).sort(
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
+
     return children.map((comment) => (
       <Comment
         key={comment.id}
