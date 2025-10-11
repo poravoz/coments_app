@@ -19,17 +19,25 @@ export default class CommentsController {
   ) {}
 
   @Get()
-  async getComments(@Query('search') search?: string): Promise<CommentResponse[] | CommentEntity[]> {
+  async getComments(
+    @Query('search') search?: string,
+    @Query('sort') sort?: 'asc' | 'desc'
+  ): Promise<CommentResponse[] | CommentEntity[]> {
     if (search) {
-      return this.commentsService.searchForComments(search);
+      return this.commentsService.searchForComments(search, sort);
     }
-    
+  
     const comments = await this.commentsService.getAllComments();
     
-    return comments.map(comment => ({
-      ...comment,
-      createdAt: comment.createdAt.toLocaleString('uk-UA', { hour12: false }),
-    }));
+    return comments
+      .sort((a, b) => sort === 'asc' 
+        ? a.createdAt.getTime() - b.createdAt.getTime() 
+        : b.createdAt.getTime() - a.createdAt.getTime()
+      )
+      .map(comment => ({
+        ...comment,
+        createdAt: comment.createdAt.toLocaleString('uk-UA', { hour12: false }),
+      }));
   }
 
   @Get(':id')

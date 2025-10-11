@@ -19,7 +19,7 @@ export default class CommentSearchService {
     });
   }
 
-  async search(text: string): Promise<CommentSearchBody[]> {
+  async search(text: string, sort: 'asc' | 'desc' = 'desc'): Promise<CommentSearchBody[]> {
     const result = await this.elasticsearchService.search<CommentSearchBody>({
       index: this.index,
       query: {
@@ -28,6 +28,9 @@ export default class CommentSearchService {
           fields: ['comment'],
         },
       },
+      sort: [
+        { createdAt: { order: sort } }
+      ]
     });
   
     return result.hits.hits
@@ -62,4 +65,5 @@ export default class CommentSearchService {
       },
     });
   }
+
 }

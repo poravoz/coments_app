@@ -158,23 +158,16 @@ export class CommentsService {
     return savedComment;
   }
 
-  async searchForComments(text: string) {
-    const results = await this.commentSearchService.search(text); // results: CommentSearchBody[]
-    
-    if (!results.length) {
-      return [];
-    }
+  async searchForComments(text: string, sort?: 'asc' | 'desc') {
+    const results = await this.commentSearchService.search(text, sort);
+    if (!results.length) return [];
   
-    const ids = results
-      .map(result => result.id)
-      .filter((id): id is string => !!id);
-  
-    if (!ids.length) {
-      return [];
-    }
+    const ids = results.map(result => result.id).filter((id): id is string => !!id);
+    if (!ids.length) return [];
   
     return this.commentRepository.find({
       where: { id: In(ids) },
+      order: { createdAt: sort || 'DESC' }
     });
   }
 
