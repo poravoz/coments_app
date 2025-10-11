@@ -10,6 +10,9 @@ import { UploadApiResponse, UploadApiErrorResponse } from 'cloudinary';
 import { CreateReplyDto } from './dto/createReplyComment.dto';
 import { Attachment } from './interface/attachment.dto';
 import { PubSub } from 'graphql-subscriptions';
+import CommentSearchService from './commentSearch.service';
+import { Comment as IComment } from './dto/comment.dto';
+import { In } from 'typeorm';
 
 export type ProcessedFiles = {
   images?: Express.Multer.File[];
@@ -19,15 +22,16 @@ export type ProcessedFiles = {
 
 @Injectable()
 export class CommentsService {
-  private pubSub: PubSub;
+  private pubSub: PubSub; 
 
   constructor(
     @InjectRepository(CommentEntity)
     private commentRepository: Repository<CommentEntity>,
-    private readonly usersService: UsersService
+    private readonly usersService: UsersService,
+    private readonly commentSearchService: CommentSearchService,
   ) {
     this.pubSub = new PubSub();
-  }
+  }  
 
   private async uploadToCloudinary(file: Express.Multer.File, resource_type: 'image' | 'video' | 'raw'): Promise<{ secure_url: string }> {
     return new Promise((resolve, reject) => {
@@ -130,20 +134,48 @@ export class CommentsService {
   async createComment(commentDto: CreateCommentDto, userId: string, files?: ProcessedFiles): Promise<CommentEntity> {
     const user = await this.usersService.getUserById(userId);
     const attachments = files ? await this.processFiles(files) : [];
-    
+  
     const newComment = this.commentRepository.create({
       comment: commentDto.comment,
       user,
       parentId: commentDto.parentId || null,
       attachments: attachments.length > 0 ? attachments : undefined,
     });
-    
+  
     const savedComment = await this.commentRepository.save(newComment);
-    
+  
+    const commentForIndex: IComment = {
+      id: savedComment.id!,
+      comment: savedComment.comment || '',
+      createdAt: savedComment.createdAt,
+    };
+  
+    await this.commentSearchService.indexComment(commentForIndex);
+  
     // Publish real-time update
     this.pubSub.publish('commentAdded', { commentAdded: savedComment });
-    
+  
     return savedComment;
+  }
+
+  async searchForComments(text: string) {
+    const results = await this.commentSearchService.search(text); // results: CommentSearchBody[]
+    
+    if (!results.length) {
+      return [];
+    }
+  
+    const ids = results
+      .map(result => result.id)
+      .filter((id): id is string => !!id);
+  
+    if (!ids.length) {
+      return [];
+    }
+  
+    return this.commentRepository.find({
+      where: { id: In(ids) },
+    });
   }
 
   async createReply(parentId: string, replyDto: CreateReplyDto, userId: string, files?: ProcessedFiles): Promise<CommentEntity> {

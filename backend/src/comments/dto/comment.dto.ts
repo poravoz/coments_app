@@ -1,5 +1,5 @@
 export class Comment {
     id: string;
-    body: string;
+    comment: string;
     createdAt: Date;
 }

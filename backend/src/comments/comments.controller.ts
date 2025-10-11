@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UploadedFiles, UseGuards, UseInterceptors, ValidationPipe, HttpException, HttpStatus } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UploadedFiles, UseGuards, UseInterceptors, ValidationPipe, HttpException, HttpStatus, Query } from '@nestjs/common';
 import { Request } from 'express';
 import { CommentsService } from './comments.service';
 import { CreateCommentDto } from './dto/createComment.dto';
@@ -9,15 +9,21 @@ import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { CommentEntity } from './entities/comment.entity';
 import { CommentResponse } from './interface/comment-response.dto';
 import { UserEntity } from 'src/users/entities/user.entity';
+import CommentSearchService from './commentSearch.service';
 
 @Controller('comments')
 export default class CommentsController {
   constructor(
-    private readonly commentsService: CommentsService
+    private readonly commentsService: CommentsService,
+    private readonly commentSearchService: CommentSearchService,
   ) {}
 
   @Get()
-  async getAllComments(): Promise<CommentResponse[]> {
+  async getComments(@Query('search') search?: string): Promise<CommentResponse[] | CommentEntity[]> {
+    if (search) {
+      return this.commentsService.searchForComments(search);
+    }
+    
     const comments = await this.commentsService.getAllComments();
     
     return comments.map(comment => ({
@@ -26,7 +32,7 @@ export default class CommentsController {
     }));
   }
 
- @Get(':id')
+  @Get(':id')
   async getCommentById(@Param('id') id: string): Promise<CommentResponse> {
     const comment = await this.commentsService.getCommentById(id);
     
@@ -35,14 +41,13 @@ export default class CommentsController {
       createdAt: comment.createdAt.toLocaleString('uk-UA', { hour12: false }),
     };
   }
-
   
   @Post()
   @UseGuards(JwtRefreshGuard)
   @UseInterceptors(FileFieldsInterceptor([
-    { name: 'images', maxCount: 1 }, // Supports multiple images
+    { name: 'images', maxCount: 1 },
     { name: 'video', maxCount: 1 },
-    { name: 'attachment', maxCount: 1 }, // Supports .txt, .docx, etc.
+    { name: 'attachment', maxCount: 1 },
   ]))
   async createComment(
     @Body(ValidationPipe) commentDto: CreateCommentDto, 
@@ -51,10 +56,9 @@ export default class CommentsController {
   ): Promise<CommentEntity> {
     const userId = req.user?.id;
     if (!userId) {
-      throw new HttpException('Something went wrong', HttpStatus.UNAUTHORIZED);
+      throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
     }
 
-    // Allow creating a comment with text and/or files (e.g., images)
     const hasComment = commentDto.comment && commentDto.comment.trim().length > 0;
     const hasFiles = files && (
       (files.images && files.images.length > 0) ||
@@ -63,7 +67,7 @@ export default class CommentsController {
     );
     
     if (!hasComment && !hasFiles) {
-      throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
+      throw new HttpException('Comment or files required', HttpStatus.BAD_REQUEST);
     }
     
     return this.commentsService.createComment(commentDto, userId, files);
@@ -84,7 +88,7 @@ export default class CommentsController {
   ): Promise<CommentEntity> {
     const userId = req.user?.id;
     if (!userId) {
-      throw new HttpException('Something went wrong', HttpStatus.UNAUTHORIZED);
+      throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
     }
 
     const hasComment = replyDto.comment && replyDto.comment.trim().length > 0;
@@ -95,7 +99,7 @@ export default class CommentsController {
     );
     
     if (!hasComment && !hasFiles) {
-      throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
+      throw new HttpException('Comment or files required', HttpStatus.BAD_REQUEST);
     }
     
     return this.commentsService.createReply(parentId, replyDto, userId, files);
@@ -116,31 +120,39 @@ export default class CommentsController {
   ): Promise<CommentEntity> {
     const userId = req.user?.id;
     if (!userId) {
-      throw new HttpException('Something went wrong', HttpStatus.UNAUTHORIZED);
+      throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
     }
-
-    // Allow updating comment and/or attachments, or clearing attachments while keeping comment
+  
     const hasCommentUpdate = updateDto.comment !== undefined;
     const hasFiles = files !== undefined && (
       (files.images && files.images.length > 0) ||
       (files.video && files.video.length > 0) ||
       (files.attachment && files.attachment.length > 0)
     );
-    
+  
     if (!hasCommentUpdate && !updateDto.clearAttachments && files === undefined) {
-      throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
+      throw new HttpException('Nothing to update', HttpStatus.BAD_REQUEST);
     }
-    
-    return this.commentsService.updateComment(id, updateDto, userId, files);
+  
+    const updatedComment = await this.commentsService.updateComment(id, updateDto, userId, files);
+  
+    await this.commentSearchService.update({
+      id: updatedComment.id!,
+      comment: updatedComment.comment!,
+      createdAt: updatedComment.createdAt
+    });
+  
+    return updatedComment;
   }
 
   @Delete(':id')
   @UseGuards(JwtRefreshGuard)
-  async deleteComment(@Param('id') id: string, @Req() req: Request & { user: UserEntity }): Promise<CommentEntity> {
-    const userId = req.user?.id;
-    if (!userId) {
-      throw new HttpException('Something went wrong', HttpStatus.UNAUTHORIZED);
+  async deleteComment(@Param('id') id: string): Promise<CommentEntity> {
+    const deleteComments = await this.commentsService.deleteComment(id);
+    if (!deleteComments) {
+      throw new HttpException('Comment not found', HttpStatus.NOT_FOUND);
     }
-    return this.commentsService.deleteComment(id);
+    await this.commentSearchService.remove(id);
+    return deleteComments;
   }
 }
