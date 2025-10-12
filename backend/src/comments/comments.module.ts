@@ -8,10 +8,11 @@ import CommentsController from './comments.controller';
 import { PubSubModule } from 'src/pubsub/pubsub.module';
 import { SearchModule } from 'src/search/search.module';
 import CommentSearchService from './commentSearch.service';
+import { UserEntity } from 'src/users/entities/user.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([CommentEntity]),
+    TypeOrmModule.forFeature([CommentEntity, UserEntity]),
     UsersModule,
     PubSubModule,
     SearchModule,

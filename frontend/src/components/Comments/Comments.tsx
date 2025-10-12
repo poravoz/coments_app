@@ -13,6 +13,8 @@ export const Comments = () =>  {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const commentsPerPage = 25;
   
   const { 
@@ -24,35 +26,71 @@ export const Comments = () =>  {
     removeAttachment,
     subscribeToComments,
     subscribeToUserUpdates,
+    searchComments
   } = useCommentsStore();
 
   const { subscribeToAvatarUpdates } = useAuthStore();
 
-  // Subscribe to real-time updates
+  // Load comments
+  const loadComments = () => {
+    if (searchQuery.trim()) {
+      searchComments(searchQuery, sortOrder);
+    } else {
+      getComments(sortOrder);
+    }
+  };
+
+  // Subscribe to real-time updates and load initial comments
   useEffect(() => {
-    getComments();
+    getComments(sortOrder);
     
-    // Subscribe to comments
     const unsubscribeComments = subscribeToComments();
-    
-    // Subscribe to avatar updates
     const unsubscribeAvatars = subscribeToAvatarUpdates();
-    
-    // Subscribe to user updates for all users
     const unsubscribeUserUpdates = subscribeToUserUpdates();
     
-    // Cleanup subscriptions on unmount
     return () => {
       unsubscribeComments();
       unsubscribeAvatars();
       unsubscribeUserUpdates(); 
     };
-  }, [getComments, subscribeToComments, subscribeToAvatarUpdates, subscribeToUserUpdates]);
+  }, []);
 
+  // Reload comments when search query or sort order changes
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      const timeoutId = setTimeout(() => {
+        loadComments();
+        setCurrentPage(1);
+      }, 300); 
+      
+      return () => clearTimeout(timeoutId);
+    } else {
+      loadComments();
+      setCurrentPage(1);
+    }
+  }, [searchQuery, sortOrder]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCurrentPage(1); 
+    loadComments();
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery("");
+    setCurrentPage(1);
+  };
+
+  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newSortOrder = e.target.value as "asc" | "desc";
+    setSortOrder(newSortOrder);
+    setCurrentPage(1);
+  };
 
   const addComment = (text: string, imageFile?: File, videoFile?: File, attachmentFile?: File, parentId: string | null = null, callback?: () => void) => {
     createComment(text, parentId, imageFile, videoFile, attachmentFile).then((newComment) => {
       if (callback) callback();
+      loadComments();
     }).catch((error) => {
       console.error("Add comment failed:", error);
     });
@@ -61,6 +99,7 @@ export const Comments = () =>  {
   const updateCommentHandler = (text: string, commentId: string, imageFile?: File, videoFile?: File, attachmentFile?: File) => {
     updateComment(commentId, text, imageFile, videoFile, attachmentFile).then(() => {
       setActiveComment(null);
+      loadComments();
     }).catch((error) => {
       console.error("Update comment failed:", error);
     });
@@ -80,8 +119,10 @@ export const Comments = () =>  {
     if (!commentToDelete) return;
     await deleteComment(commentToDelete);
     closeDeleteDialog();
+    loadComments();
   };
 
+  // Build comment tree
   const buildTree = (comments: CommentType[]): Map<string, CommentType[]> => {
     const tree = new Map<string, CommentType[]>();
         
@@ -92,12 +133,12 @@ export const Comments = () =>  {
         tree.set(parentId, []);
       }
       tree.get(parentId)!.push(comment);
-      
     });
     
     return tree;
   };
 
+  // Get subtree size for pagination
   const getSubtreeSize = (commentId: string, tree: Map<string, CommentType[]>): number => {
     let size = 1;
     const children = tree.get(commentId) || [];
@@ -107,11 +148,18 @@ export const Comments = () =>  {
     return size;
   };
 
-  const tree = buildTree(storeComments);
-  const rootComments = (tree.get("root") || []).sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-  );
+  // Sort comments
+  const sortedComments = [...storeComments].sort((a, b) => {
+    const dateA = new Date(a.createdAt).getTime();
+    const dateB = new Date(b.createdAt).getTime();
+    return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+  });
 
+  // Build tree and get root comments
+  const tree = buildTree(sortedComments);
+  const rootComments = tree.get("root") || [];
+
+  // Pagination
   const pages: CommentType[][] = [];
   let currentPageComments: CommentType[] = [];
   let currentCount = 0;
@@ -134,10 +182,9 @@ export const Comments = () =>  {
   const totalPages = pages.length;
   const currentRoots = pages[currentPage - 1] || [];
 
+  // Render comments recursively
   const renderComments = (parentId: string, depth: number) => {
-    const children = (tree.get(parentId) || []).sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
+    const children = tree.get(parentId) || [];
 
     return children.map((comment) => (
       <Comment
@@ -157,11 +204,50 @@ export const Comments = () =>  {
 
   return (
     <div className="comments-page">
+      {/* Search and sort panel */}
+      <div className="search-sort-panel-main">
+        <form onSubmit={handleSearch} className="search-form-main">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search comments..."
+            className="search-input-main"
+          />
+          <button type="submit" className="search-button-main">
+            Search
+          </button>
+          {searchQuery && (
+            <button 
+              type="button" 
+              onClick={handleClearSearch}
+              className="clear-search-button-main"
+            >
+              Clear
+            </button>
+          )}
+        </form>
+
+        <div className="sort-controls-main">
+          <label htmlFor="sort-order">Sort by date:</label>
+          <select
+            id="sort-order"
+            value={sortOrder}
+            onChange={handleSortChange}
+            className="sort-select-main"
+          >
+            <option value="desc">Newest First</option>
+            <option value="asc">Oldest First</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Comment form */}
       <div className="comment-form-wrapper">
-        <p className="comments-title">Enter the Comment</p>
         <CommentForm submitLabel="Write" handleSubmit={addComment} />
       </div>
 
+      {/* Pagination */}
       {totalPages > 0 && (
         <div className="pagination">
           <button
@@ -180,9 +266,10 @@ export const Comments = () =>  {
         </div>
       )}
 
+      {/* Comments container */}
       <div className="comments-container-wrapper">
-        { currentRoots.length === 0 ? (
-          <p>No comments on this page...</p>
+        {currentRoots.length === 0 ? (
+          <p>No comments {searchQuery ? "found for your search" : "on this page"}...</p>
         ) : (
           currentRoots.map((root) => (
             <Comment

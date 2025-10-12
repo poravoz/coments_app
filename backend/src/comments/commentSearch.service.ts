@@ -15,27 +15,54 @@ export default class CommentSearchService {
         id: comment.id,
         comment: comment.comment,
         createdAt: comment.createdAt,
+        parentId: comment.parentId || null,
       },
     });
   }
 
-  async search(text: string, sort: 'asc' | 'desc' = 'desc'): Promise<CommentSearchBody[]> {
-    const result = await this.elasticsearchService.search<CommentSearchBody>({
-      index: this.index,
-      query: {
-        multi_match: {
-          query: text,
-          fields: ['comment'],
-        },
-      },
-      sort: [
-        { createdAt: { order: sort } }
-      ]
-    });
+  async search(
+    text: string,
+    sort: 'asc' | 'desc' = 'desc'
+  ): Promise<CommentSearchBody[]> {
+    if (!text || text.trim().length === 0) {
+      return [];
+    }
   
-    return result.hits.hits
-      .map(hit => hit._source)
-      .filter((source): source is CommentSearchBody => !!source);
+    try {
+      const query = {
+        bool: {
+          must: [
+            {
+              wildcard: {
+                comment: {
+                  value: `*${text}*`
+                }
+              }
+            }
+          ],
+          must_not: [
+            {
+              exists: {
+                field: "parentId"
+              }
+            }
+          ]
+        }
+      };
+  
+      const result = await this.elasticsearchService.search<CommentSearchBody>({
+        index: this.index,
+        query,
+        sort: [{ createdAt: { order: sort } }],
+      });
+  
+      return result.hits.hits
+        .map((hit) => hit._source)
+        .filter((source): source is CommentSearchBody => !!source);
+    } catch (error) {
+      console.error('Elasticsearch search error:', error);
+      return [];
+    }
   }
 
   async remove(commentId: string): Promise<void> {
@@ -57,13 +84,14 @@ export default class CommentSearchService {
         source: `
           ctx._source.comment = params.comment;
           ctx._source.createdAt = params.createdAt;
+          ctx._source.parentId = params.parentId;
         `,
         params: {
           comment: comment.comment,
           createdAt: comment.createdAt,
+          parentId: comment.parentId
         },
       },
     });
   }
-
 }

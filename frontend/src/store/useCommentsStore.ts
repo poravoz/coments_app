@@ -45,7 +45,7 @@ interface CommentsStore {
   isCommentsLoading: boolean;
   comments: CommentType[];
   users: UserType[];
-  getComments: () => Promise<void>;
+  getComments: (sort?: 'asc' | 'desc') => Promise<void>;
   createComment: (text: string, parentId?: string | null, imageFile?: File, videoFile?: File, attachmentFile?: File) => Promise<CommentType>;
   updateComment: (id: string, text: string, imageFile?: File, videoFile?: File, attachmentFile?: File) => Promise<CommentType>;
   removeAttachment: (commentId: string, attachmentIndex: number) => Promise<void>;
@@ -53,6 +53,7 @@ interface CommentsStore {
   getUsers: () => Promise<void>;
   subscribeToComments: () => () => void;
   subscribeToUserUpdates: () => () => void;
+  searchComments: (text: string, sort?: 'asc' | 'desc') => Promise<void>;
 }
 
 const transformComment = (rawComment: RawComment): CommentType => ({
@@ -76,11 +77,11 @@ export const useCommentsStore = create<CommentsStore>((set, get) => ({
   isCommentsLoading: false,
   comments: [],
   users: [],
-
-  getComments: async () => {
+  
+  getComments: async (sort: 'asc' | 'desc' = 'desc') => {
     set({ isCommentsLoading: true });
     try {
-      const res = await axiosInstance.get("/comments");
+      const res = await axiosInstance.get(`/comments?sort=${sort}`);
       
       const transformed = res.data.map((raw: RawComment) => {
         const transformedComment = transformComment(raw);
@@ -355,5 +356,25 @@ export const useCommentsStore = create<CommentsStore>((set, get) => ({
     return () => {
       subscription.unsubscribe();
     };
+  },
+
+  searchComments: async (query: string, sort: 'asc' | 'desc' = 'desc') => {
+    set({ isCommentsLoading: true });
+    try {
+      const res = await axiosInstance.get(
+        `/comments?search=${encodeURIComponent(query)}&sort=${sort}`
+      );
+      
+      const transformed = res.data.map((raw: RawComment) => {
+        const transformedComment = transformComment(raw);
+        return transformedComment;
+      });
+      
+      set({ comments: transformed });
+    } catch (error) {
+      toast.error((error as Error)?.message || "Search failed");
+    } finally {
+      set({ isCommentsLoading: false });
+    }
   },
 }));

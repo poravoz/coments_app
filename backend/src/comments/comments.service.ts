@@ -148,26 +148,43 @@ export class CommentsService {
       id: savedComment.id!,
       comment: savedComment.comment || '',
       createdAt: savedComment.createdAt,
+      parentId: savedComment.parentId, 
     };
   
     await this.commentSearchService.indexComment(commentForIndex);
   
-    // Publish real-time update
     this.pubSub.publish('commentAdded', { commentAdded: savedComment });
   
     return savedComment;
   }
 
-  async searchForComments(text: string, sort?: 'asc' | 'desc') {
-    const results = await this.commentSearchService.search(text, sort);
-    if (!results.length) return [];
+  async searchForComments(
+    text: string, 
+    sort?: 'asc' | 'desc'
+  ) {
+    if (!text || text.trim().length === 0) {
+      return [];
+    }
   
-    const ids = results.map(result => result.id).filter((id): id is string => !!id);
+    const results = await this.commentSearchService.search(text, sort);
+    if (!results || !results.length) return [];
+  
+    const ids = results
+      .map(result => result?.id)
+      .filter((id): id is string => !!id && typeof id === 'string');
+    
     if (!ids.length) return [];
   
-    return this.commentRepository.find({
+    const foundComments = await this.commentRepository.find({
       where: { id: In(ids) },
-      order: { createdAt: sort || 'DESC' }
+      relations: ['user', 'children'],
+    });
+  
+    const sortOrderValue = sort || 'desc';
+    return foundComments.sort((a, b) => {
+      return sortOrderValue === 'asc' 
+        ? a.createdAt.getTime() - b.createdAt.getTime() 
+        : b.createdAt.getTime() - a.createdAt.getTime();
     });
   }
 
