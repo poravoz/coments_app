@@ -25,7 +25,8 @@ export const Captcha: React.FC<CaptchaProps> = ({
   const lastSuccessfulValueRef = useRef<string>("");
 
   const { generateCaptcha, validateCaptcha, checkToken } = useCaptchaStore();
-
+  const [captchaStyles, setCaptchaStyles] = useState<React.CSSProperties[]>([]);
+  
   const fetchCaptcha = async () => {
     setIsLoading(true);
     try {
@@ -33,6 +34,9 @@ export const Captcha: React.FC<CaptchaProps> = ({
       setCaptchaStr(text);
       setCaptchaToken(token);
       onTokenChange?.(token);
+      
+      setCaptchaStyles(text.split("").map(() => getCharTransform()));
+  
       setIsValid(null);
       onChange("");
       lastSuccessfulValueRef.current = "";
@@ -123,11 +127,11 @@ export const Captcha: React.FC<CaptchaProps> = ({
 
       <div className="captcha-box">
         <div className="captcha-text">
-          {captchaStr.split("").map((char, i) => (
-            <span key={i} className="captcha-char" style={getCharTransform()}>
-              {char}
-            </span>
-          ))}
+        {captchaStr.split("").map((char, i) => (
+          <span key={i} className="captcha-char" style={captchaStyles[i]}>
+            {char}
+          </span>
+        ))}
         </div>
 
         <button
