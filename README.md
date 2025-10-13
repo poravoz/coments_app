@@ -13,9 +13,6 @@
   <a href="https://www.typescriptlang.org/" target="_blank">
     <img src="https://cdn.worldvectorlogo.com/logos/typescript.svg" width="50" alt="TypeScript"/>
   </a>
-  <a href="https://cloudinary.com/" target="_blank">
-    <img src="https://res.cloudinary.com/cloudinary-marketing/image/upload/c_scale,w_200/v1638772705/Marketing/logos/Cloudinary_Logo_Icon_Blue_on_White.png" width="50" alt="Cloudinary"/>
-  </a>
 </p>
 
 ## Key Features
