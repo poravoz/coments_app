@@ -1,5 +1,20 @@
 # CommentBox
 
+<p align="center">
+  <a href="https://reactjs.org/" target="_blank">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg" width="50" alt="React"/>
+  </a>
+  <a href="https://nestjs.com/" target="_blank">
+    <img src="https://nestjs.com/img/logo-small.svg" width="50" alt="NestJS"/>
+  </a>
+  <a href="https://www.docker.com/" target="_blank">
+    <img src="https://www.docker.com/sites/default/files/d8/2019-07/Moby-logo.png" width="50" alt="Docker"/>
+  </a>
+  <a href="https://www.postgresql.org/" target="_blank">
+    <img src="https://www.postgresql.org/media/img/about/press/elephant.png" width="50" alt="PostgreSQL"/>
+  </a>
+</p>
+
 ## Key Features
 - Registration and login with bcrypt, Passport, JWT, cookies, and refresh tokens
 - Custom captcha verification during registration
@@ -57,29 +72,29 @@ npm start
 
 Open http://localhost:3000 to view the app in the browser.
 
-### Testing
+# Testing
 
-# Backend
+### Backend
 npm run test       # Run unit tests
 npm run test:e2e   # Run e2e tests
 npm run test:cov   # Run test coverage
 
-# Frontend
+### Frontend
 npm test
 
-### Production Build
+# Production Build
 
-# Backend
+### Backend
 npm run build
 npm run start:prod
 
-# Frontend
+### Frontend
 npm run build
 
 
 # Resources
-[React Documentation](https://reactjs.org/)
-[NestJS Documentation](https://docs.nestjs.com)
+- [React Documentation](https://reactjs.org/)
+- [NestJS Documentation](https://docs.nestjs.com)
 
 # Contributing
 1. Fork the repository
