@@ -1,0 +1,17 @@
+app = "coments-app"
+
+[build]
+  builder = "dockerfile"
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 5000
+  force_https = true
+  
+  [[http_service.ports]]
+    port = 80
+    handlers = ["http"]
+  
+  [[http_service.ports]]
+    port = 443
+    handlers = ["tls", "http"]
