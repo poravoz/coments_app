@@ -7,9 +7,6 @@
   <a href="https://nestjs.com/" target="_blank">
     <img src="https://nestjs.com/img/logo-small.svg" width="50" alt="NestJS"/>
   </a>
-  <a href="https://www.docker.com/" target="_blank">
-    <img src="https://www.docker.com/sites/default/files/d8/2019-07/Moby-logo.png" width="50" alt="Docker"/>
-  </a>
   <a href="https://www.postgresql.org/" target="_blank">
     <img src="https://www.postgresql.org/media/img/about/press/elephant.png" width="50" alt="PostgreSQL"/>
   </a>
