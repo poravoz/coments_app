@@ -1,23 +1,18 @@
-FROM node:18-alpine AS backend
-
-WORKDIR /app/backend
-
-COPY backend/package*.json ./
-RUN npm install --legacy-peer-deps
-
-COPY backend/ ./
-RUN npm run build
-
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
-COPY --from=backend /app/backend/dist ./dist
-COPY --from=backend /app/backend/node_modules ./node_modules
-COPY --from=backend /app/backend/package.json ./
+COPY package*.json ./
+COPY backend/package*.json ./backend/
 
-RUN npm ci --only=production
+RUN cd backend && npm install --legacy-peer-deps --include=dev
+
+COPY backend/ ./backend/
+
+RUN cd backend && npm run build
+
+WORKDIR /app/backend
 
 EXPOSE 3000
 
-CMD ["node", "dist/main"]
+CMD ["npm", "run", "start:prod"]
