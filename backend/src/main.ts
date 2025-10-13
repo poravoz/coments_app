@@ -1,36 +1,22 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ConfigService } from '@nestjs/config';
-import { NestExpressApplication } from '@nestjs/platform-express';
-import { join } from 'path';
-import { HttpException, HttpStatus, ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  
+  const app = await NestFactory.create(AppModule);
   app.use(cookieParser());
-  app.useGlobalPipes(new ValidationPipe());
-  
   const configService = app.get(ConfigService);
-  const port = configService.get<number>('PORT');
-  if(!port) {
-    throw new HttpException("Something went wrong", HttpStatus.NOT_FOUND);
-  }
+  const clientOrigin = configService.get<string>('CLIENT_ORIGIN');
+
   app.enableCors({
-    origin: true,
+    origin: clientOrigin,
     credentials: true,
   });
 
-  const frontendPath = join(__dirname, '..', '..', 'frontend', 'build');
-  
-  const fs = require('fs');
-  if (fs.existsSync(frontendPath)) {
-    app.useStaticAssets(frontendPath);
-    app.setBaseViewsDir(frontendPath);
-  }
-
+  const port = configService.get<number>('PORT');
+  if (!port) throw new Error('PORT is not defined');
   await app.listen(port);
+  
 }
-
 bootstrap();
