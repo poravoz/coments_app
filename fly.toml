@@ -2,10 +2,9 @@ app = "coments-app"
 
 [build]
   builder = "dockerfile"
-  dockerfile = "Dockerfile"
 
 [http_service]
-  internal_port = 5000
+  internal_port = 3000
   force_https = true
   
   [[http_service.ports]]
