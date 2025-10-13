@@ -13,6 +13,9 @@
   <a href="https://www.postgresql.org/" target="_blank">
     <img src="https://www.postgresql.org/media/img/about/press/elephant.png" width="50" alt="PostgreSQL"/>
   </a>
+  <a href="https://www.typescriptlang.org/" target="_blank">
+    <img src="https://cdn.worldvectorlogo.com/logos/typescript.svg" width="50" alt="TypeScript"/>
+  </a>
 </p>
 
 ## Key Features
