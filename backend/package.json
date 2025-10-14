@@ -36,7 +36,7 @@
     "@nestjs/platform-ws": "^11.1.6",
     "@nestjs/typeorm": "^11.0.0",
     "@types/bcrypt": "^6.0.0",
-    "@nestjs/config": "^10.0.0",
+    "@nestjs/config": "^4.0.0",
     "@types/cookie-parser": "^1.4.9",
     "@types/hapi__joi": "^17.1.15",
     "@types/passport-jwt": "^4.0.1",
