@@ -79,7 +79,6 @@ export const Comment: React.FC<CommentProps> = ({
 
   const isReplying = activeComment?.type === "replying" && activeComment.id === comment.id;
   const isEditing = activeComment?.type === "editing" && activeComment.id === comment.id;
-  const hasActiveForm = isReplying || isEditing;
 
   const handleSubmitReply = (text: string, imageFile?: File, videoFile?: File, attachmentFile?: File) => {
     addComment(text, imageFile, videoFile, attachmentFile, comment.id, () => {

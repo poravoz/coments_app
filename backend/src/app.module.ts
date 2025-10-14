@@ -9,7 +9,6 @@ import { CaptchaModule } from './authentication/captcha/captcha.module';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { join } from 'path';
-import { SpaController } from './spa.controller';
 
 @Module({
   imports: [
@@ -51,7 +50,7 @@ import { SpaController } from './spa.controller';
     CommentsModule,
     CaptchaModule,
   ],
-  controllers: [SpaController],
+  controllers: [],
   providers: [],
 })
 export class AppModule {}

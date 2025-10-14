@@ -3,4 +3,5 @@ export class Comment {
     comment: string;
     createdAt: Date;
     parentId?: string | null;
+    userId: string;
 }
