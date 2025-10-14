@@ -39,15 +39,12 @@ export default class CommentsController {
     @Query('search') search?: string,
     @Query('sort') sort?: 'asc' | 'desc',
   ): Promise<CommentResponse[] | CommentEntity[]> {
-    console.log(`[CommentsController] Fetching comments, search: ${search}, sort: ${sort}`);
     if (search) {
       const comments = await this.commentsService.searchForComments(search, sort);
-      console.log(`[CommentsController] Found ${comments.length} comments for search: ${search}`);
       return comments;
     }
 
     const comments = await this.commentsService.getAllComments();
-    console.log(`[CommentsController] Fetched ${comments.length} comments`);
 
     return comments
       .sort((a, b) =>
@@ -63,9 +60,7 @@ export default class CommentsController {
 
   @Get(':id')
   async getCommentById(@Param('id') id: string): Promise<CommentResponse> {
-    console.log(`[CommentsController] Fetching comment by id: ${id}`);
     const comment = await this.commentsService.getCommentById(id);
-    console.log(`[CommentsController] Fetched comment:`, comment.id);
     return {
       ...comment,
       createdAt: comment.createdAt.toLocaleString('uk-UA', { hour12: false }),
@@ -92,7 +87,6 @@ export default class CommentsController {
       console.error('[CommentsController] Unauthorized: No userId in request');
       throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
     }
-    console.log(`[CommentsController] Creating comment for userId: ${userId}`, commentDto);
 
     const hasComment = commentDto.comment && commentDto.comment.trim().length > 0;
     const hasFiles =
@@ -107,7 +101,6 @@ export default class CommentsController {
     }
 
     const comment = await this.commentsService.createComment(commentDto, userId, files);
-    console.log(`[CommentsController] Created comment: ${comment.id}`);
     return comment;
   }
 
@@ -132,7 +125,6 @@ export default class CommentsController {
       console.error('[CommentsController] Unauthorized: No userId in request');
       throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
     }
-    console.log(`[CommentsController] Creating reply for parentId: ${parentId}, userId: ${userId}`, replyDto);
 
     const hasComment = replyDto.comment && replyDto.comment.trim().length > 0;
     const hasFiles =
@@ -147,7 +139,6 @@ export default class CommentsController {
     }
 
     const reply = await this.commentsService.createReply(parentId, replyDto, userId, files);
-    console.log(`[CommentsController] Created reply: ${reply.id}`);
     return reply;
   }
 
@@ -172,7 +163,6 @@ export default class CommentsController {
       console.error('[CommentsController] Unauthorized: No userId in request');
       throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
     }
-    console.log(`[CommentsController] Updating comment id: ${id}, userId: ${userId}`, updateDto);
 
     const hasCommentUpdate = updateDto.comment !== undefined;
     const hasFiles =
@@ -187,14 +177,12 @@ export default class CommentsController {
     }
 
     const updatedComment = await this.commentsService.updateComment(id, updateDto, userId, files);
-    console.log(`[CommentsController] Updated comment:`, updatedComment.id, { user: updatedComment.user });
 
     if (!updatedComment.user || !updatedComment.user.id) {
       console.error('[CommentsController] User not found for updated comment id:', id);
       throw new HttpException('User not found for the comment', HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    console.log(`[CommentsController] Indexing updated comment id: ${id}, userId: ${updatedComment.user.id}`);
     await this.commentSearchService.update({
       id: updatedComment.id!,
       comment: updatedComment.comment!,
@@ -208,13 +196,11 @@ export default class CommentsController {
   @Delete(':id')
   @UseGuards(JwtRefreshGuard)
   async deleteComment(@Param('id') id: string): Promise<CommentEntity> {
-    console.log(`[CommentsController] Deleting comment id: ${id}`);
     const deletedComment = await this.commentsService.deleteComment(id);
     if (!deletedComment) {
       console.error('[CommentsController] Comment not found for deletion, id:', id);
       throw new HttpException('Comment not found', HttpStatus.NOT_FOUND);
     }
-    console.log(`[CommentsController] Deleted comment id: ${id}`);
     await this.commentSearchService.remove(id);
     return deletedComment;
   }
