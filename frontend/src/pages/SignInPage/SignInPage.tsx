@@ -79,6 +79,7 @@ export const SignInPage = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
                 }
+                autoComplete="off"
               />
             </div>
           </div>
@@ -95,6 +96,7 @@ export const SignInPage = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, password: e.target.value })
                 }
+                autoComplete="off"
               />
               <button
                 type="button"

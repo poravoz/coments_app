@@ -102,6 +102,7 @@ export const SignUpPage: React.FC = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
+                autoComplete="off"
                 maxLength={10} 
               />
             </div>
@@ -119,6 +120,7 @@ export const SignUpPage: React.FC = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
                 }
+                autoComplete="off"
               />
             </div>
           </div>
@@ -135,6 +137,7 @@ export const SignUpPage: React.FC = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, password: e.target.value })
                 }
+                autoComplete="off"
               />
               <button
                 type="button"
@@ -158,6 +161,7 @@ export const SignUpPage: React.FC = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, repeatPassword: e.target.value })
                 }
+                autoComplete="off"
               />
             </div>
           </div>
